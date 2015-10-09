@@ -6,3 +6,25 @@ body {
 a {
   color: #00B7FF;
 }
+
+.year-month {
+}
+
+.checkin-container {
+    width: 100%;
+    height: 150px;
+}
+
+.checkin-table {
+    width: 200%;
+    height: 100%;
+    border-collapse: collapse;
+}
+
+.checkin-cell {
+    color: #ccc;
+}
+
+.checkin-cell.in-current-month {
+    color: #aaa;
+}

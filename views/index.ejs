@@ -5,7 +5,41 @@
     <link rel='stylesheet' href='/stylesheets/style.css' />
   </head>
   <body>
-    <h1><%= title %></h1>
-    <p>Welcome to <%= title %></p>
+    <h1 class="year-month"><%= date.getFullYear() %>年<%= date.getMonth()+1 %>月</h1>
+    <div class="checkin-container">
+      <table class="checkin-table">
+        <tr>
+          <td>周一</td>
+          <td>周二</td>
+          <td>周三</td>
+          <td>周四</td>
+          <td>周五</td>
+          <td>周六</td>
+          <td>周日</td>
+        </tr>
+        <% date.setDate(1);
+           var month = date.getMonth();
+           var day = date.getDay() - 1;
+           day = day < 0 ? day + 7 : day;
+           date.setDate(date.getDate() - day);
+           for (var i=0; i<5; i++) { %>
+        <tr>
+          <% for (var j=0; j<7; j++) { %>
+          <%   var currMonth = date.getMonth() == month ? " in-current-month" : ""; %>
+          <td class="checkin-cell<%= currMonth%>">
+            <%= date.getDate() %>
+          </td>
+          <% date.setDate(date.getDate()+1); %>
+          <% } %>
+        </tr>
+        <% } %>
+      </table>
+    </div>
+    <div id="habbit-container">
+    </div>
+    <div id="toolbar">
+        <button id="new-habbit" value="新建"></button>
+        <button id="manage-habbits" value="管理"></button>
+    </div>
   </body>
 </html>

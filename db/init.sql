@@ -28,7 +28,8 @@ create table if not exists habits (id bigint not null auto_increment,
                      uid int not null,
                      name varchar(256) not null,
                      flag int unsigned not null,
-                     primary key (id));
+                     primary key (id),
+                     unique key (name));
                     
 
 drop table if exists checkins;
