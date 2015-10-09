@@ -5,32 +5,37 @@
     <link rel='stylesheet' href='/stylesheets/style.css' />
   </head>
   <body>
-    <h1 class="year-month"><%= date.getFullYear() %>年<%= date.getMonth()+1 %>月</h1>
+    <h1 class="year-month"><span class="current-year"><%= date.getFullYear() %></span>年<span class="current-month"><%= date.getMonth()+1 %></span>月</h1>
     <div class="checkin-container">
       <table class="checkin-table">
         <tr>
-          <td>周一</td>
-          <td>周二</td>
-          <td>周三</td>
-          <td>周四</td>
-          <td>周五</td>
-          <td>周六</td>
-          <td>周日</td>
-        </tr>
-        <% date.setDate(1);
-           var month = date.getMonth();
-           var day = date.getDay() - 1;
-           day = day < 0 ? day + 7 : day;
-           date.setDate(date.getDate() - day);
-           for (var i=0; i<5; i++) { %>
-        <tr>
-          <% for (var j=0; j<7; j++) { %>
-          <%   var currMonth = date.getMonth() == month ? " in-current-month" : ""; %>
-          <td class="checkin-cell<%= currMonth%>">
-            <%= date.getDate() %>
-          </td>
-          <% date.setDate(date.getDate()+1); %>
+          <% for (var i=0; i<3; i++) { %>
+          <td>周一</td><td>周二</td><td>周三</td><td>周四</td>
+          <td>周五</td><td>周六</td><td>周日</td>
           <% } %>
+        </tr>
+        <% var time = date.getTime();
+           var dates = [new Date(time), new Date(time), new Date(time)];
+           var months = [];
+           dates.forEach(function(d, i) {
+               d.setMonth(d.getMonth()+i-1);
+               d.setDate(1);
+               months[i] = d.getMonth();
+               var day = d.getDay() - 1;
+               day = day < 0 ? day + 7 : day;
+               d.setDate(d.getDate() - day);
+           });
+           for (var i=0; i<6; i++) { %>
+        <tr>
+          <% for (var j=0; j<3; j++) {
+               for (var k=0; k<7; k++) {
+                 var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : ""; %>
+          <td class="checkin-cell<%= currMonth%>">
+            <%= dates[j].getDate() %>
+          </td>
+          <%     dates[j].setDate(dates[j].getDate()+1);
+               }
+             } %>
         </tr>
         <% } %>
       </table>

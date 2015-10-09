@@ -1,5 +1,6 @@
-body {
-  padding: 50px;
+html, body {
+  margin: 0;
+  padding: 0;
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
@@ -8,6 +9,8 @@ a {
 }
 
 .year-month {
+    margin: 10px auto;
+    text-align: center;
 }
 
 .checkin-container {
@@ -16,7 +19,9 @@ a {
 }
 
 .checkin-table {
-    width: 200%;
+    position: absolute;
+    left: -100%;
+    width: 300%;
     height: 100%;
     border-collapse: collapse;
 }
