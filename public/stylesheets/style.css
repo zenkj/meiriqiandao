@@ -37,7 +37,7 @@ a {
 }
 
 .checkin-table.auto-move {
-    transition: left 0.3s ease-out 0s;
+    transition: left 0.6s ease-out 0s;
 }
 
 .checkin-table td {
