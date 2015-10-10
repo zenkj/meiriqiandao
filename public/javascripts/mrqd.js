@@ -14,26 +14,30 @@ $(document).ready(function() {
         var $container = $table.parent();
         var startLeft = 0;
 
+        function log(msg) {
+            console.log(Date.now() + ': ' + msg);
+        }
+
         hc.on('swipeleft', function(e) {
-            //console.log('hello swipe left');
+            log('hello swipe left');
             if (autoMoving) return;
             swiped = true;
             autoMoveTo(1);
         });
         hc.on('swiperight', function(e) {
-            //console.log('hello swipe right');
+            log('hello swipe right');
             if (autoMoving) return;
             swiped = true;
             autoMoveTo(-1);
         });
         hc.on('panstart', function(e) {
-            //console.log('hello panstart');
+            log('hello panstart');
             if (autoMoving) return;
             swiped = false;
             startLeft = $('.checkin-table').position().left;
         });
         hc.on('panmove', function(e) {
-            //console.log('hello panmove');
+            log('hello panmove');
             if (autoMoving) return;
             var left = startLeft + e.deltaX;
             var width = $table.outerWidth() / 3.0;
@@ -55,7 +59,7 @@ $(document).ready(function() {
         }
 
         hc.on('panend', function(e) {
-            //console.log('hello panend');
+            log('hello panend');
             if (autoMoving) return;
             if (swiped) {
                 swiped = false;
