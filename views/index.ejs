@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
+<!--
+    <meta name="viewport" content="width=device-width;user-scalable=no">
+-->
     <title><%= title %></title>
     <link rel='stylesheet' href='/stylesheets/style.css' />
+    <script src="/javascripts/jquery.js"></script>
+    <script src="/javascripts/hammer.js"></script>
+    <script src="/javascripts/mrqd.js"></script>
   </head>
   <body>
     <h1 class="year-month"><span class="current-year"><%= date.getFullYear() %></span>年<span class="current-month"><%= date.getMonth()+1 %></span>月</h1>
@@ -10,8 +17,8 @@
       <table class="checkin-table">
         <tr>
           <% for (var i=0; i<3; i++) { %>
-          <td>周一</td><td>周二</td><td>周三</td><td>周四</td>
-          <td>周五</td><td>周六</td><td>周日</td>
+          <th>周一</th><th>周二</th><th>周三</th><th>周四</th>
+          <th>周五</th><th>周六</th><th>周日</th>
           <% } %>
         </tr>
         <% var time = date.getTime();
@@ -31,7 +38,7 @@
                for (var k=0; k<7; k++) {
                  var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : ""; %>
           <td class="checkin-cell<%= currMonth%>">
-            <%= dates[j].getDate() %>
+              <%= dates[j].getDate() %>
           </td>
           <%     dates[j].setDate(dates[j].getDate()+1);
                }
@@ -43,8 +50,8 @@
     <div id="habbit-container">
     </div>
     <div id="toolbar">
-        <button id="new-habbit" value="新建"></button>
-        <button id="manage-habbits" value="管理"></button>
+        <button id="new-habbit">新建</button>
+        <button id="manage-habbits">管理</button>
     </div>
   </body>
 </html>

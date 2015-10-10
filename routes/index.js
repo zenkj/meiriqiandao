@@ -4,8 +4,8 @@ var router = express.Router();
 /* GET home page. */
 router.get('/', function(req, res, next) {
   var data = {
-    title: '每日签到 - 最简单易用的习惯养成工具',
-    date: new Date('2015-09'),
+    title: '每日签到 - 养成好习惯',
+    date: new Date(),
   };
   res.render('index', data);
 });
