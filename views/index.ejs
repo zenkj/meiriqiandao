@@ -32,17 +32,20 @@
                day = day < 0 ? day + 7 : day;
                d.setDate(d.getDate() - day);
            });
-           for (var i=0; i<6; i++) { %>
+           for (var i=0; i<6; i++) {
+        %>
         <tr>
           <% for (var j=0; j<3; j++) {
                for (var k=0; k<7; k++) {
-                 var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : ""; %>
+                 var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : "";
+          %>
           <td class="checkin-cell<%= currMonth%>">
               <%= dates[j].getDate() %>
           </td>
           <%     dates[j].setDate(dates[j].getDate()+1);
                }
-             } %>
+             }
+          %>
         </tr>
         <% } %>
       </table>
@@ -52,6 +55,7 @@
     <div id="toolbar">
         <button id="new-habbit">新建</button>
         <button id="manage-habbits">管理</button>
+        <button id="clear-log">清除调试日志</button>
     </div>
     <div id="debug-log">
     </div>

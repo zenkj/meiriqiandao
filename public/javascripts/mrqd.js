@@ -1,10 +1,56 @@
 $(document).ready(function() {
-    $('td').each(function(i) {
+
+// Global Data Begin-------------------------------
+    // model data
+    var M = {
+        userid: 0,
+        username: '',
+        version: 0,
+        habits: [],
+    };
+
+    // temporary data
+    var T = {
+        currentHabit: 0,
+    };
+// Global Data End---------------------------------
+
+
+// for Debug Begin-------------------------------
+    function log(msg) {
+        //console.log(Date.now() + ': ' + msg);
+        $('#debug-log').prepend('<p>'+Date.now() + ': ' + msg + '</p>');
+    }
+    $('#clear-log').click(function() {
+        $('#debug-log').empty();
+    });
+// for Debug End---------------------------------
+
+
+// Utilities Begin-------------------------------
+    function currentDate(date) {
+        if (typeof date == 'undefined') {
+            var year = +$('.current-year').text();
+            var month = +$('.current-month').text();
+            var date = new Date(year, month-1);
+            return date;
+        } else {
+            $('.current-year').text(date.getFullYear());
+            $('.current-month').text(date.getMonth()+1);
+        }
+    }
+// Utilities End---------------------------------
+
+
+
+    $('.checkin-table td').each(function(i) {
         var hc = new Hammer(this);
         hc.on('tap', function(e) {
             $(e.target).toggleClass('checkined');
         });
     });
+
+
 
     $('.checkin-table').each(function() {
         var hc = new Hammer(this);
@@ -30,10 +76,6 @@ $(document).ready(function() {
             log('mouse up');
         });
 
-        function log(msg) {
-            //console.log(Date.now() + ': ' + msg);
-            $('#debug-log').prepend('<p>'+Date.now() + ': ' + msg + '</p>');
-        }
 
         hc.on('swipeleft', function(e) {
             log('swipe left');
@@ -62,18 +104,6 @@ $(document).ready(function() {
                 $table.css('left', ''+left+'px');
             }
         });
-
-        function currentDate(date) {
-            if (typeof date == 'undefined') {
-                var year = +$('.current-year').text();
-                var month = +$('.current-month').text();
-                var date = new Date(year, month-1);
-                return date;
-            } else {
-                $('.current-year').text(date.getFullYear());
-                $('.current-month').text(date.getMonth()+1);
-            }
-        }
 
         hc.on('panend', function(e) {
             log('panend: deltaX='+ e.deltaX);
@@ -105,25 +135,13 @@ $(document).ready(function() {
                 resetTable(date);
                 return;
             } else {
-                log('-webkit-transition: ' + $table.css('-webkit-transition'));
-                log('class: ' + $table.attr('class'));
                 $table.addClass('auto-move');
-                $table.css('transition', 'left 0.6s ease-out 0s');
-                log('-webkit-transition: ' + $table.css('-webkit-transition'));
-                log('style: ' + $table.attr('style'));
                 $table.css('left', ''+destLeft+'px');
                 autoMoving = true;
-                log('transition begin');
-                log('transition: ' + $table.css('transition'));
-                log('class: ' + $table.attr('class'));
-                $table.one('transitionend', function() {
+
+                // weixin X5 engine need webkitTransitionEnd
+                $table.one('webkitTransitionEnd oTransitionEnd otransitionend transitionend', function() {
                     log('transition end');
-                    $table.removeClass('auto-move');
-                    autoMoving = false;
-                    resetTable(date);
-                });
-                $table.one('webkitTransitionEnd', function() {
-                    log('webkitTransitionEnd');
                     $table.removeClass('auto-move');
                     autoMoving = false;
                     resetTable(date);
@@ -165,7 +183,59 @@ $(document).ready(function() {
             $table.css('left', '-100%');
             currentDate(date);
         }
-
     });
+
+
+    var ajax = (function() {
+        function request(type, url, data, done, fail) {
+            var xhr = $.ajax({url: url,
+                type: type,
+                data: data || {},
+                dataType: 'json',
+                cache: false});
+            if (done) xhr.done(done);
+            if (fail) xhr.fail(fail);
+        }
+
+        function get(url, data, done, fail) {
+            request('GET', url, data, done, fail);
+        }
+
+        function post(url, data, done, fail) {
+            request('POST', url, data, done, fail);
+        }
+
+        function put(url, data, done, fail) {
+            request('PUT', url, data, done, fail);
+        }
+
+        function delete(url, data, done, fail) {
+            request('DELETE', url, data, done, fail);
+        }
+
+        return {
+            get: get,
+            post: post,
+            put: put,
+            delete: delete,
+        };
+    })();
+
+    function init() {
+        ajax.get('/api/v1/checkins', null,
+                 function(data) {
+                    if (!data || data.error) {
+                        log('get checkins error: ' + data.msg);
+                        return;
+                    }
+                    G.version = data.version;
+                    G.habits = data.habits;
+                    if (G.habits.length > 0) {
+                        T.currentHabit = G.habits[0].id;
+                    }
+                 },
+                 function(xhr, err) {
+                 }); 
+    }
 
 });

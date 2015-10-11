@@ -37,21 +37,17 @@ a {
 }
 
 .checkin-table.auto-move {
-/*
+    /* X5 engine in weixin need this */
     -webkit-transition: left 0.6s ease-out 0s ;
-*/
+    -moz-transition: left 0.6s ease-out 0s ;
+    -o-transition: left 0.6s ease-out 0s ;
     transition: left 0.6s ease-out 0s ;
-/*
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -o-user-select: none;
-    user-select: none;
-*/
 }
 
 .checkin-table td {
     cursor: pointer;
+
+    /* X5 engine in weixin need this */
     -webkit-user-select: none;
     -khtml-user-select: none;
     -moz-user-select: none;
