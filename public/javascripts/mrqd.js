@@ -14,30 +14,46 @@ $(document).ready(function() {
         var $container = $table.parent();
         var startLeft = 0;
 
+        $table.on('touchstart', function() {
+            log('touch start');
+        });
+
+        $table.on('touchend', function() {
+            log('touch end');
+        });
+
+        $table.on('mousedown', function() {
+            log('mouse down');
+        });
+
+        $table.on('mouseup', function() {
+            log('mouse up');
+        });
+
         function log(msg) {
             console.log(Date.now() + ': ' + msg);
         }
 
         hc.on('swipeleft', function(e) {
-            log('hello swipe left');
+            log('swipe left');
             if (autoMoving) return;
             swiped = true;
             autoMoveTo(1);
         });
         hc.on('swiperight', function(e) {
-            log('hello swipe right');
+            log('swipe right');
             if (autoMoving) return;
             swiped = true;
             autoMoveTo(-1);
         });
         hc.on('panstart', function(e) {
-            log('hello panstart');
+            log('panstart');
             if (autoMoving) return;
             swiped = false;
             startLeft = $('.checkin-table').position().left;
         });
         hc.on('panmove', function(e) {
-            log('hello panmove');
+            log('panmove');
             if (autoMoving) return;
             var left = startLeft + e.deltaX;
             var width = $table.outerWidth() / 3.0;
@@ -59,7 +75,7 @@ $(document).ready(function() {
         }
 
         hc.on('panend', function(e) {
-            log('hello panend');
+            log('panend');
             if (autoMoving) return;
             if (swiped) {
                 swiped = false;
