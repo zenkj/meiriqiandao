@@ -31,7 +31,8 @@ $(document).ready(function() {
         });
 
         function log(msg) {
-            console.log(Date.now() + ': ' + msg);
+            //console.log(Date.now() + ': ' + msg);
+            $('#debug-log').prepend('<p>'+Date.now() + ': ' + msg + '</p>');
         }
 
         hc.on('swipeleft', function(e) {
@@ -104,10 +105,25 @@ $(document).ready(function() {
                 resetTable(date);
                 return;
             } else {
+                log('-webkit-transition: ' + $table.css('-webkit-transition'));
+                log('class: ' + $table.attr('class'));
                 $table.addClass('auto-move');
+                $table.css('transition', 'left 0.6s ease-out 0s');
+                log('-webkit-transition: ' + $table.css('-webkit-transition'));
+                log('style: ' + $table.attr('style'));
                 $table.css('left', ''+destLeft+'px');
                 autoMoving = true;
-                $table.on('transitionend', function() {
+                log('transition begin');
+                log('transition: ' + $table.css('transition'));
+                log('class: ' + $table.attr('class'));
+                $table.one('transitionend', function() {
+                    log('transition end');
+                    $table.removeClass('auto-move');
+                    autoMoving = false;
+                    resetTable(date);
+                });
+                $table.one('-webkit-transitionend', function() {
+                    log('-webkit-transition end');
                     $table.removeClass('auto-move');
                     autoMoving = false;
                     resetTable(date);
