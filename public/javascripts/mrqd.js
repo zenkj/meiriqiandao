@@ -48,13 +48,13 @@ $(document).ready(function() {
             autoMoveTo(-1);
         });
         hc.on('panstart', function(e) {
-            log('panstart');
+            log('panstart: deltaX='+e.deltaX);
             if (autoMoving) return;
             swiped = false;
             startLeft = $('.checkin-table').position().left;
         });
         hc.on('panmove', function(e) {
-            log('panmove');
+            log('panmove: deltaX=' + e.deltaX);
             if (autoMoving) return;
             var left = startLeft + e.deltaX;
             var width = $table.outerWidth() / 3.0;
@@ -76,7 +76,7 @@ $(document).ready(function() {
         }
 
         hc.on('panend', function(e) {
-            log('panend');
+            log('panend: deltaX='+ e.deltaX);
             if (autoMoving) return;
             if (swiped) {
                 swiped = false;
@@ -122,8 +122,8 @@ $(document).ready(function() {
                     autoMoving = false;
                     resetTable(date);
                 });
-                $table.one('-webkit-transitionend', function() {
-                    log('-webkit-transition end');
+                $table.one('webkitTransitionEnd', function() {
+                    log('webkitTransitionEnd');
                     $table.removeClass('auto-move');
                     autoMoving = false;
                     resetTable(date);
