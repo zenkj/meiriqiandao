@@ -13,6 +13,7 @@
   </head>
   <body>
     <h1 class="year-month"><span class="current-year"><%= date.getFullYear() %></span>年<span class="current-month"><%= date.getMonth()+1 %></span>月</h1>
+    <button class="button return-today">回今天</button>
     <div class="checkin-container">
       <table class="checkin-table">
         <tr>
@@ -53,11 +54,29 @@
     <div id="habbit-container">
     </div>
     <div id="toolbar">
-        <button id="new-habbit">新建</button>
-        <button id="manage-habbits">管理</button>
-        <button id="clear-log">清除调试日志</button>
+      <button id="new-habbit" class="button">新建</button>
+      <button id="manage-habbits" class="button">管理</button>
+      <button id="clear-log" class="button">清除调试日志</button>
     </div>
     <div id="debug-log">
+    </div>
+    <div class="dialog-container">
+      <div class="dialog-background"></div>
+      <div class="dialog dialog-info">
+        <div class="dialog-title"></div>
+        <div class="dialog-message"></div>
+        <div class="dialog-button-bar">
+          <button class="button dialog-button-ok">知道了</button>
+        </div>
+      </div>
+      <div class="dialog dialog-yesno">
+        <div class="dialog-title"></div>
+        <div class="dialog-message"></div>
+        <div class="dialog-button-bar">
+          <button class="button dialog-button-yes">是的</button>
+          <button class="button dialog-button-no">不</button>
+        </div>
+      </div>
     </div>
   </body>
 </html>
