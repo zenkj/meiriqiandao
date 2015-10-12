@@ -31,6 +31,18 @@ $(document).ready(function() {
 
 
 // Utilities Begin-------------------------------
+    function sameYear(d1, d2) {
+        return d1.getFullYear() == d2.getFullYear();
+    }
+
+    function sameMonth(d1, d2) {
+        return sameYear(d1, d2) && d1.getMonth() == d2.getMonth();
+    }
+
+    function sameDay(d1, d2) {
+        return sameMonth(d1, d2) && d1.getDate() == d2.getDate();
+    }
+
     // @param date: specify the year and month of the table
     // @return a new date which is the first date of the table
     function firstDayOfTable(date) {
@@ -231,8 +243,69 @@ $(document).ready(function() {
         }
     }
 
+    // slide to or switch to the destination month
+    // if the current month is near the dest month, then slide,
+    // otherwise switch.
+    // td can be destination month or number offset to the current month 
+    function slideTo(td) {
+        var td, cd = currentDate();
+        cd.setDate(1);
+
+        var deltaMonth = 0;
+
+        if (typeof td == 'number') {
+            cd.setMonth(cd.getMonth()+td);
+            if (td <-1 || td >1) {
+                gotoDate(cd);
+                return;
+            }
+            deltaMonth = td;
+            td = cd;
+        } else {
+            td.setDate(1);
+            var prev = new Date(cd.getTime());
+            var next = new Date(cd.getTime());
+            prev.setMonth(prev.getMonth()-1);
+            next.setMonth(next.getMonth()+1);
+            if (sameMonth(cd, td)) {
+                deltaMonth = 0;
+            } else if (sameMonth(next, td)) {
+                deltaMonth = 1;
+            } else if (sameMonth(prev, td)) {
+                deltaMonth = -1;
+            } else {
+                gotoDate(td);
+                return;
+            }
+        }
+
+        // deltaMonth can only be -1, 0, or 1
+        // means auto move to prev month, current month, or next month
+        var $table = $('.checkin-table');
+        var $container = $table.parent();
+        var date = td;
+        var destLeft = (-deltaMonth-1)*$container.width();
+        if($table.position().left == destLeft) {
+            gotoDate(date);
+            T.moving = false;
+        } else {
+            $table.addClass('auto-move');
+            $table.css('left', ''+destLeft+'px');
+            T.autoMoving = true;
+
+            // weixin X5 engine need webkitTransitionEnd
+            $table.one('webkitTransitionEnd oTransitionEnd otransitionend transitionend', function() {
+                log('transition end');
+                $table.removeClass('auto-move');
+                T.autoMoving = false;
+                gotoDate(date);
+                T.moving = false;
+            });
+        }
+    }
+
     $('.return-today').click(function() {
-        gotoDate(new Date());
+        slideTo(new Date());
     });
 // Adjust Date End---------------------------
 
@@ -339,13 +412,13 @@ $(document).ready(function() {
             log('swipe left');
             if (T.autoMoving) return;
             swiped = true;
-            autoMoveTo(1);
+            slideTo(1);
         });
         hc.on('swiperight', function(e) {
             log('swipe right');
             if (T.autoMoving) return;
             swiped = true;
-            autoMoveTo(-1);
+            slideTo(-1);
         });
         hc.on('panstart', function(e) {
             log('panstart: deltaX='+e.deltaX);
@@ -381,33 +454,9 @@ $(document).ready(function() {
                 deltaMonth = 1;
             }
 
-            autoMoveTo(deltaMonth);
+            slideTo(deltaMonth);
         });
 
-        // deltaMonth can only be -1, 0, or 1
-        // means auto move to prev month, current month, or next month
-        function autoMoveTo(deltaMonth) {
-            var date = currentDate();
-            date.setMonth(date.getMonth()+deltaMonth);
-            var destLeft = (-deltaMonth-1)*$container.width();
-            if($table.position().left == destLeft) {
-                gotoDate(date);
-                T.moving = false;
-            } else {
-                $table.addClass('auto-move');
-                $table.css('left', ''+destLeft+'px');
-                T.autoMoving = true;
-
-                // weixin X5 engine need webkitTransitionEnd
-                $table.one('webkitTransitionEnd oTransitionEnd otransitionend transitionend', function() {
-                    log('transition end');
-                    $table.removeClass('auto-move');
-                    T.autoMoving = false;
-                    gotoDate(date);
-                    T.moving = false;
-                });
-            }
-        }
 
     });
 // Register Listeners End ------------------------
