@@ -11,7 +11,7 @@ $(document).ready(function() {
 
     // temporary data
     var T = {
-        currentHabit: -1,
+        currentHabit: null,
         //currentDate: new Date(),
         moving: false,      // table is moving
         autoMoving: false,  // table is auto moving
@@ -46,6 +46,7 @@ $(document).ready(function() {
     // @param date: specify the year and month of the table
     // @return a new date which is the first date of the table
     function firstDayOfTable(date) {
+        date = date || currentDate();
         var d = new Date(date.getFullYear(), date.getMonth(), 1);
         var delta = d.getDay() - 1;
         if (delta < 0) delta += 7;
@@ -53,10 +54,60 @@ $(document).ready(function() {
         return d;
     }
 
+
+    // get checkin state or set checkin state
+    function checkin(date, state) {
+        var i;
+        var habit = T.currentHabit;
+
+        if (!habit) return false;
+
+        var y = date.getFullYear();
+        var m = date.getMonth();
+        var d = date.getDate() - 1;
+
+        if (typeof state == 'undefined') {
+            // get
+            var checkined = false;
+            if (habit.checkins[y]) {
+                var checkin = habit.checkins[y][m];
+                if (checkin & (1<<d))
+                    checkined = true;
+            }
+            return checkined;
+        } else {
+            // set
+            if (!habit.checkins[y]) {
+                habit.checkins[y] = [0,0,0,0,0,0,0,0,0,0,0,0];
+            }
+            if (state) {
+                habit.checkins[y][m] |= (1<<d);
+            } else {
+                habit.checkins[y][m] &= ~(1<<d);
+            }
+            return true;
+        }
+    }
+
+    function isWorkDay(date) {
+        var habit = T.currentHabit;
+        if (!habit) return true;
+        var weekday = date.getDay();
+        weekday = weekday == 0 ? 7 : weekday;
+        var workday = true;
+        for (n=0; n<habit.workday.length; n++) {
+            if (weekday == habit.workday[n]) {
+                break;
+            }
+        }
+        if (n == habit.workday.length)
+            workday = false;
+        return workday;
+    }
+
     // update checkins in table
     function updateCheckins() {
         var i,j,k,n;
-        var habit;
         var date = currentDate();
         date.setMonth(date.getMonth()-1);
         var dates = [];
@@ -66,13 +117,6 @@ $(document).ready(function() {
             date.setMonth(date.getMonth()+1);
         }
 
-        for (i=0; i<M.habits.length; i++) {
-            if (T.currentHabit == M.habits[i].id) {
-                habit = M.habits[i];
-                break;
-            }
-        }
-
         var trs = $('.checkin-table tr');
         for (i=0; i<6; i++) {
             var $tr = $trs.eq(i+1);
@@ -80,18 +124,8 @@ $(document).ready(function() {
             for (j=0; j<3; j++) {
                 for (k=0; k<7; k++) {
                     var $td = $tds.eq(j*7+k);
-                    var y = dates[j].getFullYear();
-                    var m = dates[j].getMonth();
-                    var d = dates[j].getDate() - 1;
-                    var weekday = dates[j].getDay();
-                    weekday = weekday == 0 ? 7 : weekday;
 
-                    var checkined = false;
-                    if (habit && habit.checkins[y]) {
-                        var checkin = habit.checkins[y][m];
-                        if (checkin & (1<<d))
-                            checkined = true;
-                    }
+                    var checkined = checkin(dates[j]);
 
                     if (checkined) {
                         $td.addClass('checkined');
@@ -99,16 +133,7 @@ $(document).ready(function() {
                         $td.removeClass('checkined');
                     }
 
-                    var workday = true;
-                    if (habit) {
-                        for (n=0; n<habit.workday.length; n++) {
-                            if (weekday == habit.workday[n]) {
-                                break;
-                            }
-                        }
-                        if (n == habit.workday.length)
-                            workday = false;
-                    }
+                    var workday = isWorkDay(dates[j]);
                     if (workday) {
                         $td.removeClass('rest-day');
                     } else {
@@ -375,14 +400,6 @@ $(document).ready(function() {
 
 
 // Register Listeners Begin ---------------------
-    $('.checkin-table td').each(function(i) {
-        var hc = new Hammer(this);
-        hc.on('tap', function(e) {
-            $(e.target).toggleClass('checkined');
-        });
-    });
-
-
 
     $('.checkin-table').each(function() {
         var hc = new Hammer(this);
@@ -390,6 +407,7 @@ $(document).ready(function() {
         var $table = $(this);
         var $container = $table.parent();
         var startLeft = 0;
+        var i,j,k;
 
         $table.on('touchstart', function() {
             log('touch start');
@@ -457,6 +475,56 @@ $(document).ready(function() {
             slideTo(deltaMonth);
         });
 
+        function toggleCheckin(e) {
+            if (M.habits.length == 0) {
+                Dialog.info('提醒', '请先创建一个习惯');
+                return;
+            }
+
+            if (!T.currentHabit) {
+                Dialog.info('提醒', '请选择一个习惯');
+                return;
+            }
+
+            var td = e.target;
+            if (!td.tposition) {
+                // not current table
+                return;
+            }
+
+            if (M.userid == 0) {
+                // dummy user
+            }
+
+
+            var date = firstDayOfTable();
+            date.setDate(date.getDate()+td.tposition-1);
+            var y = date.getFullYear();
+            var m = date.getMonth()+1;
+            var d = date.getDate();
+            ajax.put('/api/v1/checkins/'+T.currentHabit.id+'-'+y+'-'+m+'-'+d,
+                    {version: M.version, checkin: checkin},
+                    function(data) {
+                    },
+                    function(xhr, err) {
+                    });
+
+                $(e.target).toggleClass('checkined');
+        }
+
+        var $trs = $('tr', $table);
+        var $tr, $td;
+        var hc1;
+        k = 1;
+        for (i=1; i<7; i++) {
+            $tr = $trs.eq(i);
+            for (j=0; j<7; j++) {
+                $td = $tr.eq(j+7);
+                $td[0].tposition = k++;
+                hc1 = new Hammer($td[0]);
+                hc1.on('tap', toggleCheckin);
+            }
+        }
 
     });
 // Register Listeners End ------------------------
@@ -472,7 +540,7 @@ $(document).ready(function() {
                     G.version = data.version;
                     G.habits = data.habits;
                     if (G.habits.length > 0) {
-                        T.currentHabit = G.habits[0].id;
+                        T.currentHabit = G.habits[0];
                     }
                  },
                  function(xhr, err) {
