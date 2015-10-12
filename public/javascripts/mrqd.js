@@ -209,7 +209,7 @@ $(document).ready(function() {
             request('PUT', url, data, done, fail);
         }
 
-        function delete(url, data, done, fail) {
+        function del(url, data, done, fail) {
             request('DELETE', url, data, done, fail);
         }
 
@@ -217,7 +217,7 @@ $(document).ready(function() {
             get: get,
             post: post,
             put: put,
-            delete: delete,
+            delete: del,
         };
     })();
 
