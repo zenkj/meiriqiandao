@@ -58,8 +58,9 @@ li > .badge {
 .return-today {
     display: none;
     position: absolute;
-    top: 20px;
-    right: 40px;
+    top: 5px;
+    right: 5px;
+    color: red;
     opacity: 0;
 }
 
