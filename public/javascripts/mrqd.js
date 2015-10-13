@@ -160,37 +160,41 @@ $(document).ready(function() {
         }
     }
 
+
+    function updateHabit(habit) {
+        $('.checkin-count', habit.dom).text(checkinCount(habit));
+        if (habit == T.currentHabit) {
+            $(habit.dom).addClass('current-habit');
+        } else {
+            $(habit.dom).removeClass('current-habit');
+        }
+    }
+
     // update habits in habit list
     // @param refresh: true: the model is changed, recreate related dom object
     //                 false: the model is not changed, reuse the dom object
     function updateHabits(refresh) {
-        var i, habit, $habits, $habit;
+        var i, habit, $habit;
         $list = $('#habit-list');
 
         if (refresh) $list.empty();
-        else $habits = $('.habit', $list);
 
         for (i=0; i<M.habits.length; i++) {
             habit = M.habits[i];
             if (refresh) {
                 $habit = $('<li></li>');
                 $habit[0].habit = habit;
+                habit.dom = $habit[0];
                 $habit.addClass('habit');
                 $habit.text(habit.name);
+                $habit.append('<span class="badge checkin-count"></span>');
                 $habit.appendTo($list);
                 new Hammer($habit[0]).on('tap', function(e) {
                     T.currentHabit = e.target.habit || e.target.parentNode.habit;
                     updateHabits();
                 });
-            } else {
-                $habit = $habits.eq(i);
             }
-
-            if (habit == T.currentHabit) {
-                $habit.addClass('current-habit');
-            } else {
-                $habit.removeClass('current-habit');
-            }
+            updateHabit(habit);
         }
 
         updateCheckins();
@@ -266,6 +270,35 @@ $(document).ready(function() {
             // remove
             T.waitingCheckins[checkinID(habit, date)] = false;
         }
+    }
+
+
+    function checkinCount(habit) {
+        var year, checkins, i;
+        var count = 0;
+        var ones = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4];
+
+        function onecount(n) {
+            var c = 0;
+            c += ones[n&15]; n >>= 4;
+            c += ones[n&15]; n >>= 4;
+            c += ones[n&15]; n >>= 4;
+            c += ones[n&15]; n >>= 4;
+            c += ones[n&15]; n >>= 4;
+            c += ones[n&15]; n >>= 4;
+            c += ones[n&15]; n >>= 4;
+            c += ones[n&15];
+            return c;
+        }
+
+        for (year in habit.checkins) {
+            checkins = habit.checkins[year];
+            for (i=0; i<checkins.length; i++) {
+                count += onecount(checkins[i]);
+            }
+        }
+
+        return count;
     }
 
 // Utilities End---------------------------------
@@ -492,7 +525,7 @@ $(document).ready(function() {
         };
     })();
 
-    Dialog.info('每日签到 - 养成好习惯', '欢迎欢迎', function() {log('end');});
+    //Dialog.info('每日签到 - 养成好习惯', '欢迎欢迎', function() {log('end');});
 // Dialog End---------------------------------
 
 
@@ -604,6 +637,7 @@ $(document).ready(function() {
             if (M.userid == 0) {
                 // dummy user
                 checkin(date, !checkined);
+                updateHabit(T.currentHabit);
                 updateCheckin($td, date);
             } else {
                 ajax.put('/api/v1/checkins/'+checkinID(T.currentHabit, date),
