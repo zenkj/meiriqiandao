@@ -138,6 +138,11 @@ td.wait-server-response {
     color: black;
 }
 
+#habit-container {
+    overflow-y: scroll;
+    padding-top: 10px;
+}
+
 #habit-list {
     margin: 0;
     padding: 0;
@@ -163,6 +168,12 @@ td.wait-server-response {
 .current-habit {
     color: #fff;
     background-color: #337ab7 !important;
+}
+
+
+#toolbar {
+    position: absolute;
+    bottom: 0;
 }
 
 
@@ -285,10 +296,19 @@ td.wait-server-response {
 }
 /* Dialog End */
 
+/* Debug Begin */
 #debug-log {
     position: absolute;
     width: 100%;
     height: 20%;
     bottom: 0;
     overflow: scroll;
+    display: none;
 }
+
+#clear-log {
+    display: none;
+}
+
+/* Debug End */
+
