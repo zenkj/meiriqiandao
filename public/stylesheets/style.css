@@ -58,7 +58,8 @@ li > .badge {
 .return-today {
     display: none;
     position: absolute;
-    top: 5px;
+    font-size: 16px;
+    top: 15px;
     right: 5px;
     color: red;
     opacity: 0;
@@ -157,9 +158,11 @@ td.wait-server-response {
     padding: 10px 15px;
 }
 
+/*
 .habit:first-child {
     border-top: 1px solid #ddd;
 }
+*/
 
 .habit:hover {
     background-color: #ddd;
@@ -173,9 +176,22 @@ td.wait-server-response {
 
 #toolbar {
     position: absolute;
-    bottom: 0;
+    bottom: 5px;
+    width: 100%;
+    padding: 10px;
 }
 
+#toolbar:after {
+    clear: both;
+}
+
+#new-habit {
+    float: left;
+}
+
+#manage-habits {
+    float: right;
+}
 
 
 /* Dialog Begin */
