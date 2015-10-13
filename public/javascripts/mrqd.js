@@ -15,6 +15,7 @@ $(document).ready(function() {
         //currentDate: new Date(),
         moving: false,      // table is moving
         autoMoving: false,  // table is auto moving
+        waitingCheckins: {},
     };
 // Global Data End---------------------------------
 
@@ -70,8 +71,8 @@ $(document).ready(function() {
             // get
             var checkined = false;
             if (habit.checkins[y]) {
-                var checkin = habit.checkins[y][m];
-                if (checkin & (1<<d))
+                var ci = habit.checkins[y][m];
+                if (ci & (1<<d))
                     checkined = true;
             }
             return checkined;
@@ -90,24 +91,50 @@ $(document).ready(function() {
     }
 
     function isWorkDay(date) {
+        var i;
         var habit = T.currentHabit;
         if (!habit) return true;
         var weekday = date.getDay();
         weekday = weekday == 0 ? 7 : weekday;
         var workday = true;
-        for (n=0; n<habit.workday.length; n++) {
-            if (weekday == habit.workday[n]) {
+        for (i=0; i<habit.workday.length; i++) {
+            if (weekday == habit.workday[i]) {
                 break;
             }
         }
-        if (n == habit.workday.length)
+        if (i == habit.workday.length)
             workday = false;
         return workday;
     }
 
+    // update one checkin in table according to the habit setting
+    function updateCheckin($td, date) {
+        var checkined = checkin(date);
+
+        if (checkined) {
+            $td.addClass('checkined');
+        } else {
+            $td.removeClass('checkined');
+        }
+
+        var workday = isWorkDay(date);
+        if (workday) {
+            $td.removeClass('rest-day');
+        } else {
+            $td.addClass('rest-day');
+        }
+
+        var waiting = waitingServerCheckin(T.currentHabit, date);
+        if (waiting) {
+            $td.addClass('wait-server-response');
+        } else {
+            $td.removeClass('wait-server-response');
+        }
+    }
+
     // update checkins in table
     function updateCheckins() {
-        var i,j,k,n;
+        var i,j,k;
         var date = currentDate();
         date.setMonth(date.getMonth()-1);
         var dates = [];
@@ -117,7 +144,7 @@ $(document).ready(function() {
             date.setMonth(date.getMonth()+1);
         }
 
-        var trs = $('.checkin-table tr');
+        var $trs = $('.checkin-table tr');
         for (i=0; i<6; i++) {
             var $tr = $trs.eq(i+1);
             var $tds = $('td', $tr);
@@ -125,25 +152,48 @@ $(document).ready(function() {
                 for (k=0; k<7; k++) {
                     var $td = $tds.eq(j*7+k);
 
-                    var checkined = checkin(dates[j]);
-
-                    if (checkined) {
-                        $td.addClass('checkined');
-                    } else {
-                        $td.removeClass('checkined');
-                    }
-
-                    var workday = isWorkDay(dates[j]);
-                    if (workday) {
-                        $td.removeClass('rest-day');
-                    } else {
-                        $td.addClass('rest-day');
-                    }
+                    updateCheckin($td, dates[j]);
 
                     dates[j].setDate(dates[j].getDate()+1);
                 }
             }
         }
+    }
+
+    // update habits in habit list
+    // @param refresh: true: the model is changed, recreate related dom object
+    //                 false: the model is not changed, reuse the dom object
+    function updateHabits(refresh) {
+        var i, habit, $habits, $habit;
+        $list = $('#habit-list');
+
+        if (refresh) $list.empty();
+        else $habits = $('.habit', $list);
+
+        for (i=0; i<M.habits.length; i++) {
+            habit = M.habits[i];
+            if (refresh) {
+                $habit = $('<li></li>');
+                $habit[0].habit = habit;
+                $habit.addClass('habit');
+                $habit.text(habit.name);
+                $habit.appendTo($list);
+                new Hammer($habit[0]).on('tap', function(e) {
+                    T.currentHabit = e.target.habit || e.target.parentNode.habit;
+                    updateHabits();
+                });
+            } else {
+                $habit = $habits.eq(i);
+            }
+
+            if (habit == T.currentHabit) {
+                $habit.addClass('current-habit');
+            } else {
+                $habit.removeClass('current-habit');
+            }
+        }
+
+        updateCheckins();
     }
 
     // Get or set current date
@@ -159,25 +209,65 @@ $(document).ready(function() {
         }
     }
 
-    // Get or set current habbit
-    function currentHabit(hid) {
-        if (typeof hid == 'undefined') {
+    // Get or set current habit
+    function currentHabit(habit) {
+        if (typeof habit == 'undefined') {
             return T.currentHibit;
         } else {
-            var i;
-
-            if (hid == T.currentHibit)
-                return;
-
-            for (i=0; i<M.habits.length; i++) {
-                if (hid == M.habits[i].id)
-                    break;
-            }
-
-            T.currentHibit = i==M.habits.length ? -1 : hid;
-            updateCheckins();
+            T.currentHibit = habit;
+            updateHabits();
         }
     }
+
+    function checkinID(habit, date) {
+        var y = date.getFullYear();
+        var m = date.getMonth() + 1;
+        var d = date.getDate();
+        return '' + habit.id + '-' + y + '-' + m + '-' + d;
+    }
+
+    function habbitOfCheck(chid) {
+        var r = chid.replace('-', ' ').match(/\S+/g);
+        if (r && r.length == 2) {
+            var hid = +r[0];
+            for (var i=0; i<M.habits.length; i++) {
+                if (M.habits[i].id == hid) {
+                    return M.habits[i];
+                }
+            }
+        }
+        return null;
+    }
+
+    function dateOfCheck(chid) {
+        var r = chid.replace('-', ' ').match(/\S+/g);
+        if (r && r.length == 2) {
+            var dstr = r[1];
+            return new Date(dstr);
+        }
+        return null;
+    }
+
+    // get or set state of waiting for checkin on server
+    // @param habit   the specific habit
+    // @param date    the date to checkin/uncheckin
+    // @param action  undefined for query,
+    //                'add' for add to waiting list,
+    //                'remove' for remove from waiting list
+    function waitingServerCheckin(habit, date, action) {
+        if (typeof action == 'undefined') {
+            // query
+            if (!habit || !date) return false;
+            return  !!T.waitingCheckins[checkinID(habit, date)];
+        } else if (action == 'add') {
+            // add
+            T.waitingCheckins[checkinID(habit, date)] = true;
+        } else if (action == 'remove') {
+            // remove
+            T.waitingCheckins[checkinID(habit, date)] = false;
+        }
+    }
+
 // Utilities End---------------------------------
 
 
@@ -221,7 +311,12 @@ $(document).ready(function() {
 
 
 // Adjust Date Begin-------------------------
-    function gotoDate(date) {
+
+    // slide to or switch to the destination month
+    // if the current month is near the dest month, then slide,
+    // otherwise switch.
+    // td can be destination month or number offset to the current month 
+    function slideTo(td) {
         // update checkin table
         // adjust the table position, center it
         function resetTable(date) {
@@ -250,6 +345,9 @@ $(document).ready(function() {
                         } else {
                             $td.removeClass("in-current-month");
                         }
+
+                        updateCheckin($td, dates[j]);
+
                         dates[j].setDate(dates[j].getDate()+1);
                     }
                 }
@@ -257,22 +355,20 @@ $(document).ready(function() {
             $('.checkin-table').css('left', '-100%');
         }
 
-        resetTable(date);
-        currentDate(date);
-        var today = new Date();
-        if (date.getFullYear() == today.getFullYear() &&
-            date.getMonth() == today.getMonth()) {
-            $('.return-today').removeClass('display');
-        } else {
-            $('.return-today').addClass('display');
-        }
-    }
 
-    // slide to or switch to the destination month
-    // if the current month is near the dest month, then slide,
-    // otherwise switch.
-    // td can be destination month or number offset to the current month 
-    function slideTo(td) {
+        function gotoDate(date) {
+
+            resetTable(date);
+            currentDate(date);
+            var today = new Date();
+            if (date.getFullYear() == today.getFullYear() &&
+                date.getMonth() == today.getMonth()) {
+                $('.return-today').removeClass('display');
+            } else {
+                $('.return-today').addClass('display');
+            }
+        }
+
         var td, cd = currentDate();
         cd.setDate(1);
 
@@ -361,13 +457,15 @@ $(document).ready(function() {
             $('.dialog-container').removeClass('display');
         });
 
-        $('.dialog-background').click(function(e) {
-            e.stopPropagation();
-            $.each(okcbs, function(i, cb) {cb();});
-            $.each(nocbs, function(i, cb) {cb();});
-            okcbs = [];
-            nocbs = [];
-            $('.dialog-container').removeClass('display');
+        $('.dialog-background').each(function(){
+            var hc = new Hammer(this);
+            hc.on('tap', function() {
+                $.each(okcbs, function(i, cb) {cb();});
+                $.each(nocbs, function(i, cb) {cb();});
+                okcbs = [];
+                nocbs = [];
+                $('.dialog-container').removeClass('display');
+            });
         });
 
         function info(title, msg, cb) {
@@ -394,7 +492,7 @@ $(document).ready(function() {
         };
     })();
 
-    Dialog.info('this is title', 'hello world', function() {log('end');});
+    Dialog.info('每日签到 - 养成好习惯', '欢迎欢迎', function() {log('end');});
 // Dialog End---------------------------------
 
 
@@ -487,64 +585,120 @@ $(document).ready(function() {
             }
 
             var td = e.target;
+            var $td = $(td);
             if (!td.tposition) {
-                // not current table
+                log('td not in current table segment is clicked');
                 return;
-            }
-
-            if (M.userid == 0) {
-                // dummy user
             }
 
 
             var date = firstDayOfTable();
             date.setDate(date.getDate()+td.tposition-1);
-            var y = date.getFullYear();
-            var m = date.getMonth()+1;
-            var d = date.getDate();
-            ajax.put('/api/v1/checkins/'+T.currentHabit.id+'-'+y+'-'+m+'-'+d,
-                    {version: M.version, checkin: checkin},
-                    function(data) {
-                    },
-                    function(xhr, err) {
-                    });
+            var checkined = checkin(date);
 
-                $(e.target).toggleClass('checkined');
+            if ($td.hasClass('wait-server-response')) {
+                log('the server do not answer me:-(');
+                return;
+            }
+
+            if (M.userid == 0) {
+                // dummy user
+                checkin(date, !checkined);
+                updateCheckin($td, date);
+            } else {
+                ajax.put('/api/v1/checkins/'+checkinID(T.currentHabit, date),
+                        {version: M.version, checkin: !checkined},
+                        function(data) {
+                            waitingServerCheckin(T.currentHabit, date, 'remove');
+                            if (data.error) {
+                                log('update checkin error: ' + data.msg);
+                                updateCheckins();
+                            } else {
+                                if (data.version == M.version + 1) {
+                                    // everything is ok
+                                    M.version = data.version;
+                                    checkin(date, !checkined);
+                                    updateCheckins();
+                                } else {
+                                    // someone else has updated elsewhere
+                                    M.version = data.version;
+                                    M.habits = data.habits;
+                                    refreshView();
+                                }
+                            }
+                        },
+                        function(xhr, err) {
+                            waitingServerCheckin(T.currentHabit, date, 'remove');
+                            updateCheckins();
+                            log('update checkin error: ' + err);
+                        });
+                waitingServerCheckin(T.currentHabit, date, 'add');
+            }
         }
 
         var $trs = $('tr', $table);
-        var $tr, $td;
-        var hc1;
+        var $tr, $tds, $td;
         k = 1;
         for (i=1; i<7; i++) {
             $tr = $trs.eq(i);
+            $tds = $('td', $tr);
             for (j=0; j<7; j++) {
-                $td = $tr.eq(j+7);
+                $td = $tds.eq(j+7);
                 $td[0].tposition = k++;
-                hc1 = new Hammer($td[0]);
-                hc1.on('tap', toggleCheckin);
+                hc = new Hammer($td[0]);
+                hc.on('tap', toggleCheckin);
             }
         }
 
     });
+
 // Register Listeners End ------------------------
 
 
-    function init() {
-        ajax.get('/api/v1/checkins', null,
+    // refresh view after big model changed (from MVC perspective)
+    function refreshView() {
+        var i;
+        if (M.habits.length > 0) {
+            if (!T.currentHabit) {
+                T.currentHabit = M.habits[0];
+            } else {
+                for (i=0; i<M.habits.length; i++) {
+                    if (T.currentHabit.id == M.habits[i].id) {
+                        T.currentHabit = M.habits[i];
+                        break;
+                    }
+                }
+                if (i == M.habits.length)
+                    T.currentHabit = M.habits[0];
+            }
+        } else {
+            T.currentHabit = null;
+        }
+
+        updateHabits(true);
+    }
+
+    function refresh() {
+        ajax.get('/api/v1/checkins', {version: M.version},
                  function(data) {
+                    var i;
                     if (!data || data.error) {
                         log('get checkins error: ' + data.msg);
                         return;
                     }
-                    G.version = data.version;
-                    G.habits = data.habits;
-                    if (G.habits.length > 0) {
-                        T.currentHabit = G.habits[0];
+                    if (M.userid == data.uid && M.version == data.version) {
+                        log('no data changed on server, every thing is ok');
+                        return;
                     }
+                    M.userid = data.uid;
+                    M.version = data.version;
+                    M.habits = data.habits;
+                    refreshView();
                  },
                  function(xhr, err) {
+                    log('get checkin data failed');
                  }); 
     }
 
+    refresh();
 });

@@ -67,6 +67,7 @@ router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
 
 router.get('/api/v1/checkins', function(req, res) {
   var data = {
+    uid: 0,
     version: 12,
     habits: [
       {
@@ -92,6 +93,16 @@ router.get('/api/v1/checkins', function(req, res) {
     ],
   };
   res.json(data);
+});
+
+router.get('/api/v1/whoami', function(req, res) {
+    var data = {
+        id: 0,
+        name: '签到君',
+        description: '签到小助手',
+    };
+
+    res.json(data);
 });
 
 module.exports = router;
