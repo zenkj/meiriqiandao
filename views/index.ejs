@@ -12,6 +12,19 @@
     <script src="/javascripts/mrqd.js"></script>
   </head>
   <body>
+    <div id="header">
+      <img src="/images/checkin-blue.png" alt="每日签到"></img>
+      <p class="user-title"><span class="user"><%= user.name %></span>的签到</p>
+      <div class="user-toolbar">
+        <% if (user.id < 0) { %>
+            <p class="login">登录</p>
+            <p class="signup">免费注册</p>
+        <% } else { %>
+            <p class="user-config">配置</p>
+            <p class="logout">退出</p>
+        <% } %>
+      </div>
+    </div>
     <h1 class="year-month"><span class="current-year"><%= date.getFullYear() %></span>年<span class="current-month"><%= date.getMonth()+1 %></span>月</h1>
     <button class="button return-today">回今天</button>
     <div class="checkin-container">
@@ -77,6 +90,32 @@
         <div class="dialog-button-bar">
           <button class="button dialog-button-yes">是的</button>
           <button class="button dialog-button-no">不</button>
+        </div>
+      </div>
+      <div class="dialog dialog-login">
+        <div class="dialog-title">登录</div>
+        <div class="dialog-content">
+          <p>没有账号？<span class="to-signup">免费注册</span></p>
+          <input type="text" class="dialog-input" id="login-user" placeholder="邮箱名或手机号">
+          <input type="text" class="dialog-input" id="login-password" placeholder="密码">
+        </div>
+        <div class="dialog-button-bar">
+          <button class="button dialog-button-yes">登录</button>
+          <button class="button dialog-button-no">取消</button>
+        </div>
+      </div>
+      <div class="dialog dialog-signup">
+        <div class="dialog-title">注册</div>
+        <div class="dialog-content">
+          <p>已有账号？<span class="to-login">登录</span></p>
+          <div class="dialog-input"><input type="text" id="signup-phone" placeholder="手机号"><span>*</span></div>
+          <div class="dialog-input"><input type="text" id="signup-email" placeholder="邮箱名"><span></span></div>
+          <div class="dialog-input"><input type="text" id="signup-password" placeholder="密码"><span>*</span></div>
+          <div class="dialog-input"><input type="text" id="signup-password-again" placeholder="重复输入密码"><span>*</span></div>
+        </div>
+        <div class="dialog-button-bar">
+          <button class="button dialog-button-yes">注册</button>
+          <button class="button dialog-button-no">取消</button>
         </div>
       </div>
     </div>

@@ -50,6 +50,52 @@ li > .badge {
     float: right;
 }
 
+#header {
+    position: relative;
+    height: 2em;
+    padding: 10px;
+    background-color: #ddd;
+}
+
+#header:after {
+    clear: both;
+}
+
+#header img {
+    float: left;
+    position: relative;
+    top: -10px;
+}
+
+.user-title {
+    float: left;
+    margin: 0;
+    padding: 0;
+}
+
+.user {
+    color: #594372;
+    font-weight: 800;
+}
+
+.user-toolbar {
+    float: right;
+    margin: 0;
+    padding: 0;
+}
+
+.login, .signup, .user-config, .logout {
+    display: inline;
+    margin-left: 5px;
+    cursor: pointer;
+    color: black;
+}
+
+.login:hover, .signup:hover, .user-config:hover, .logout:hover {
+    color: gray;
+}
+
+
 .year-month {
     margin: 10px auto;
     text-align: center;
@@ -59,7 +105,7 @@ li > .badge {
     display: none;
     position: absolute;
     font-size: 16px;
-    top: 15px;
+    top: 35px;
     right: 5px;
     color: red;
     opacity: 0;
@@ -218,7 +264,7 @@ td.wait-server-response {
     height: 100%;
 }
 
-.dialog-container.display .dialog-background{
+.dialog-container.display .dialog-background {
     opacity: 0.4;
     /* X5 engine in weixin need -webkit- */
     -webkit-transition: opacity 0.3s ease-out;
@@ -234,7 +280,7 @@ td.wait-server-response {
     -webkit-box-shadow: 0 3px 9px rgba(0,0,0,.5);
     box-shadow: 0 3px 9px rgba(0,0,0,.5);
     position: relative;
-    width: 50%;
+    width: 60%;
     height: 30%;
     margin: 0 auto;
 
@@ -257,9 +303,18 @@ td.wait-server-response {
 }
 
 .dialog-info {
+
 }
 
 .dialog-yesno {
+}
+
+.dialog-login {
+    height: 50%;
+}
+
+.dialog-signup {
+    height: 60%;
 }
 
 .dialog-title {
@@ -282,6 +337,41 @@ td.wait-server-response {
     height: 60%;
     text-align: center;
     padding: 20px;
+}
+
+.dialog-content {
+    position: absolute;
+    top: 20%;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    text-align: center;
+    padding: 20px;
+}
+
+.to-signup, .to-login {
+    color: red;
+    cursor: pointer;
+}
+
+.to-signup:hover, .to-login:hover {
+    color: #900;
+}
+
+.dialog-input-container {
+    position: relative;
+}
+
+.dialog-input {
+    display: table;
+    position: relative;
+    margin-bottom: 10px;
+    color: red;
+    width: 90%;
+}
+
+.dialog-input input, .dialog-input span {
+    display: table-cell;
 }
 
 .dialog-button-bar {

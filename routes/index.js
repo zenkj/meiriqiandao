@@ -1,16 +1,57 @@
 var express = require('express');
 var router = express.Router();
 
+var mysql = require('mysql');
+
+var dbpool = mysql.createPool({
+    connectionLimit: 10,
+    host: '127.0.0.1',
+    user: 'mrqd',
+    password: 'mrqd123',
+    database: 'mrqd',
+});
+
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  var data = {
-    title: '每日签到 - 养成好习惯',
-    date: new Date(),
-    user: {
-        name: '签到君'
-    },
-  };
-  res.render('index', data);
+    var data = {
+        title: '每日签到 - 养成好习惯',
+        date: new Date(),
+        user: {
+            id: -1,
+            name: '签到君',
+        },
+    };
+
+    var uid = -1;
+    if (typeof req.session.uid == 'undefined') {
+        req.session.uid = -1;
+    } else {
+        uid = +req.session.uid;
+    }
+
+    dbpool.query('select * from users where id = ?', [uid], function(err, rows, fields) {
+        if (err) throw err;
+        if (rows.length == 0) {
+            console.log('this session is wrong, the user id ' + uid + ' does not exist');
+            req.session = null;
+        } else {
+            data.user.id = uid;
+            data.user.name = rows[0].name;
+        }
+        res.render('index', data);
+    });
+});
+
+router.get('/logout', function(req, res) {
+});
+
+router.post('/login', function(req, res) {
+});
+
+router.post('/signup', function(req, res) {
+});
+
+router.put('/user-config', function(req, res) {
 });
 
 
@@ -66,6 +107,7 @@ router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
 });
 
 router.get('/api/v1/checkins', function(req, res) {
+    console.log('get /api/v1/checkins: ' + req.path);
   var data = {
     uid: 0,
     version: 12,

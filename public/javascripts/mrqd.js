@@ -465,38 +465,38 @@ $(document).ready(function() {
 
 // Dialog Begin-------------------------------
     var Dialog = (function() {
-        var okcbs = [];
-        var yescbs = [];
-        var nocbs = [];
+        var okcb;
+        var yescb;
+        var nocb;
 
         $('.dialog-button-ok').click(function(e) {
             e.stopPropagation();
-            $.each(okcbs, function(i, cb) {cb();});
-            okcbs = [];
+            if (okcb) okcb();
+            okcb = null;
             $('.dialog-container').removeClass('display');
         });
 
         $('.dialog-button-yes').click(function(e) {
             e.stopPropagation();
-            $.each(yescbs, function(i, cb) {cb();});
-            yescbs = [];
+            if (yescb) yescb();
+            yescb = null;
             $('.dialog-container').removeClass('display');
         });
 
         $('.dialog-button-no').click(function(e) {
             e.stopPropagation();
-            $.each(nocbs, function(i, cb) {cb();});
-            nocbs = [];
+            if(nocb) nocb();
+            nocb = null;
             $('.dialog-container').removeClass('display');
         });
 
         $('.dialog-background').each(function(){
             var hc = new Hammer(this);
             hc.on('tap', function() {
-                $.each(okcbs, function(i, cb) {cb();});
-                $.each(nocbs, function(i, cb) {cb();});
-                okcbs = [];
-                nocbs = [];
+                if (okcb) okcb();
+                if (nocb) nocb();
+                okcb = null;
+                nocb = null;
                 $('.dialog-container').removeClass('display');
             });
         });
@@ -506,22 +506,38 @@ $(document).ready(function() {
             $('.dialog-info .dialog-message').text(msg || '');
             $('.dialog').removeClass('display');
             $('.dialog-container, .dialog-info').addClass('display');
-            if (cb) okcbs.push(cb);
+            okcb = cb;
         }
 
-        function yesno(title, msg, yescb, nocb) {
+        function yesno(title, msg, ycb, ncb) {
             $('.dialog-yesno .dialog-title').text(title || '');
             $('.dialog-yesno .dialog-message').text(msg || '');
             $('.dialog').removeClass('display');
             $('.dialog-container, .dialog-yesno').addClass('display');
 
-            if (yescb) yescbs.push(yescb);
-            if (nocb) nocbs.push(nocb);
+            yescb = ycb;
+            nocb = ncb;
+        }
+
+        function signup(ycb, ncb) {
+            $('.dialog').removeClass('display');
+            $('.dialog-container, .dialog-signup').addClass('display');
+            yescb = ycb;
+            nocb = ncb;
+        }
+
+        function login(ycb, ncb) {
+            $('.dialog').removeClass('display');
+            $('.dialog-container, .dialog-login').addClass('display');
+            yescb = ycb;
+            nocb = ncb;
         }
 
         return {
             info: info,
             yesno: yesno,
+            signup: signup,
+            login: login,
         };
     })();
 
@@ -685,6 +701,68 @@ $(document).ready(function() {
         }
 
     });
+
+
+    function login() {
+        Dialog.login(function() {
+        
+        },
+        function() {
+        });
+    }
+
+    function signup() {
+        Dialog.signup(function() {
+        },
+        function() {
+        });
+    }
+
+    $('.login').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+            login();
+        });
+    });
+
+
+    $('.signup').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+            signup();
+        });
+    });
+
+    $('.user-config').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+        });
+    });
+
+
+    $('.logout').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+        });
+    });
+
+
+
+
+    $('.to-signup').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+            signup();
+        });
+    });
+
+    $('.to-login').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+            login();
+        });
+    });
+
 
 // Register Listeners End ------------------------
 
