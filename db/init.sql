@@ -4,7 +4,7 @@ use mrqd;
 
 drop table if exists users;
 create table if not exists users (id int not null auto_increment,
-                    email varchar(256),
+                    email varchar(254), -- should <256, or fail as a key
                     phone varchar(20),
                     password varchar(32),
                     name varchar(64) not null,
@@ -35,15 +35,15 @@ insert into versions values(0,0);
 drop table if exists habits;
 create table if not exists habits (id bigint not null auto_increment,
                      uid int not null,
-                     name varchar(256) not null,
+                     name varchar(255) not null,
                      flag bigint unsigned not null,
                      primary key (id),
                      unique key (name));
 
-insert into habits values (0, 0, '每天跑步5公里',    1<<1|1<<2|1<<3|1<<4|1<<5),
-                          (1, 0, '晚上11点前睡觉',   1<<1|1<<2|1<<3|1<<4|1<<5|1<<7),
-                          (2, 0, '每天阅读半小时',   1<<1|1<<2|1<<3|1<<4|1<<5|1<<6),
-                          (3, 0, '每周六陪父母聊天', 1<<6);
+insert into habits values (1, 0, '每天跑步5公里',    1<<1|1<<2|1<<3|1<<4|1<<5),
+                          (2, 0, '晚上11点前睡觉',   1<<1|1<<2|1<<3|1<<4|1<<5|1<<7),
+                          (3, 0, '每天阅读半小时',   1<<1|1<<2|1<<3|1<<4|1<<5|1<<6),
+                          (4, 0, '每周六陪父母聊天', 1<<6);
 
 
 drop table if exists checkins;
