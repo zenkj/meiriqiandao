@@ -1,76 +1,29 @@
-html, body {
+nav {
     margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    font: "Lucida Grande", Helvetica, Arial, sans-serif;
-}
-
-a {
-  color: #00B7FF;
-}
-
-* {
-    box-sizing: border-box;
-}
-
-.button {
-    color: #333;
-    background-color: #fff;
-    padding: 6px 12px;
-    font-size: 20px;
-    font-weight: 400;
-    text-align: center;
-    cursor: pointer;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-.button:hover {
-    background-color: #eee;
-}
-
-.badge {
-    display: inline-block;
-    min-width: 10px;
-    padding: 3px 7px;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    color: #fff;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: middle;
-    background-color: #777;
-    border-radius: 10px;
-}
-
-li > .badge {
-    float: right;
-}
-
-#header {
+    padding: 5px;
     position: relative;
-    height: 2em;
-    padding: 10px;
-    background-color: #ddd;
+    width: 100%;
+    height: 40px;
+    background-color: #aaa;
 }
 
-#header:after {
+nav:after {
     clear: both;
 }
 
-#header img {
-    float: left;
-    position: relative;
-    top: -10px;
+nav * {
+    margin: 0;
 }
 
-.user-title {
+.brand {
+    margin-right: 10px;
+/*
+    margin-top: 5px;
+*/
+}
+
+.brand, .user-title {
     float: left;
-    margin: 0;
-    padding: 0;
 }
 
 .user {
@@ -78,14 +31,8 @@ li > .badge {
     font-weight: 800;
 }
 
-.user-toolbar {
-    float: right;
-    margin: 0;
-    padding: 0;
-}
-
 .login, .signup, .user-config, .logout {
-    display: inline;
+    float: right;
     margin-left: 5px;
     cursor: pointer;
     color: black;
@@ -95,18 +42,36 @@ li > .badge {
     color: gray;
 }
 
+nav.no-user .login, nav.no-user .signup, nav .user-config, nav .logout {
+    display: block;
+}
+
+nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
+    display: none;
+}
+
+.body {
+    position: absolute;
+    top: 40px;
+    bottom: 0px;
+    left: 0;
+    width: 100%;
+    height: auto;
+}
+
+.checkin-header {
+    position: relative;
+}
 
 .year-month {
-    margin: 10px auto;
     text-align: center;
 }
 
 .return-today {
+    position: relative;
+    top: 20px;
     display: none;
-    position: absolute;
-    font-size: 16px;
-    top: 35px;
-    right: 5px;
+    /*font-size: 16px;*/
     color: red;
     opacity: 0;
 }
@@ -186,10 +151,10 @@ td.wait-server-response {
 }
 
 #habit-container {
-    overflow-y: scroll;
     padding-top: 10px;
 }
 
+/*
 #habit-list {
     margin: 0;
     padding: 0;
@@ -203,6 +168,7 @@ td.wait-server-response {
     display: block;
     padding: 10px 15px;
 }
+*/
 
 /*
 .habit:first-child {
@@ -222,21 +188,17 @@ td.wait-server-response {
 
 #toolbar {
     position: absolute;
-    bottom: 5px;
+    bottom: 0;
     width: 100%;
     padding: 10px;
 }
 
-#toolbar:after {
-    clear: both;
-}
-
 #new-habit {
-    float: left;
+    position: relative;
+    margin: 0 auto;
 }
 
 #manage-habits {
-    float: right;
 }
 
 

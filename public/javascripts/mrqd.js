@@ -186,6 +186,7 @@ $(document).ready(function() {
                 $habit[0].habit = habit;
                 habit.dom = $habit[0];
                 $habit.addClass('habit');
+                $habit.addClass('list-group-item');
                 $habit.text(habit.name);
                 $habit.append('<span class="badge checkin-count"></span>');
                 $habit.appendTo($list);

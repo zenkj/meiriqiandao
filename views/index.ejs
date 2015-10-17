@@ -6,72 +6,91 @@
     <meta name="MobileOptimized" content="320">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><%= title %></title>
-    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link rel="stylesheet" href="/stylesheets/bootstrap.css"/>
+    <link rel="stylesheet" href="/stylesheets/mrqd.css" />
     <script src="/javascripts/jquery.js"></script>
     <script src="/javascripts/hammer.js"></script>
+    <script src="/javascripts/bootstrap.js"></script>
     <script src="/javascripts/mrqd.js"></script>
   </head>
   <body>
-    <div id="header">
-      <img src="/images/checkin-blue.png" alt="每日签到"></img>
+    <% if (user.id < 0) { %>
+    <nav class="no-user">
+    <% } else { %>
+    <nav>
+    <% } %>
+      <img class="brand" src="/images/checkin-blue.png" alt="每日签到"></img>
       <p class="user-title"><span class="user"><%= user.name %></span>的签到</p>
-      <div class="user-toolbar">
-        <% if (user.id < 0) { %>
-            <p class="login">登录</p>
-            <p class="signup">免费注册</p>
-        <% } else { %>
-            <p class="user-config">配置</p>
-            <p class="logout">退出</p>
-        <% } %>
+      <p class="login">登录</p>
+      <p class="signup">免费注册</p>
+      <p class="user-config">配置</p>
+      <p class="logout">退出</p>
+    </nav>
+    <div class="body">
+      <div class="container checkin-header">
+        <div class="row">
+          <div class="col-xs-offset-3 col-xs-6 col-md-offset-4 col-md-4"> 
+            <h3 class="year-month"><span class="current-year"><%= date.getFullYear() %></span>年<span class="current-month"><%= date.getMonth()+1 %></span>月</h3>
+          </div>
+          <div class="col-xs-3 col-md-4">
+            <button class="btn btn-default return-today">回今天</button>
+          </div>
+        </div>
       </div>
-    </div>
-    <h1 class="year-month"><span class="current-year"><%= date.getFullYear() %></span>年<span class="current-month"><%= date.getMonth()+1 %></span>月</h1>
-    <button class="button return-today">回今天</button>
-    <div class="checkin-container">
-      <table class="checkin-table">
-        <tr>
-          <% for (var i=0; i<3; i++) { %>
-          <th>周一</th><th>周二</th><th>周三</th><th>周四</th>
-          <th>周五</th><th>周六</th><th>周日</th>
-          <% } %>
-        </tr>
-        <% var time = date.getTime();
-           var dates = [new Date(time), new Date(time), new Date(time)];
-           var months = [];
-           dates.forEach(function(d, i) {
-               d.setMonth(d.getMonth()+i-1);
-               d.setDate(1);
-               months[i] = d.getMonth();
-               var day = d.getDay() - 1;
-               day = day < 0 ? day + 7 : day;
-               d.setDate(d.getDate() - day);
-           });
-           for (var i=0; i<6; i++) {
-        %>
-        <tr>
-          <% for (var j=0; j<3; j++) {
-               for (var k=0; k<7; k++) {
-                 var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : "";
+      <div class="checkin-container">
+        <table class="checkin-table">
+          <tr>
+            <% for (var i=0; i<3; i++) { %>
+            <th>周一</th><th>周二</th><th>周三</th><th>周四</th>
+            <th>周五</th><th>周六</th><th>周日</th>
+            <% } %>
+          </tr>
+          <% var time = date.getTime();
+             var dates = [new Date(time), new Date(time), new Date(time)];
+             var months = [];
+             dates.forEach(function(d, i) {
+                 d.setMonth(d.getMonth()+i-1);
+                 d.setDate(1);
+                 months[i] = d.getMonth();
+                 var day = d.getDay() - 1;
+                 day = day < 0 ? day + 7 : day;
+                 d.setDate(d.getDate() - day);
+             });
+             for (var i=0; i<6; i++) {
           %>
-          <td class="checkin-cell<%= currMonth%>">
-              <%= dates[j].getDate() %>
-          </td>
-          <%     dates[j].setDate(dates[j].getDate()+1);
+          <tr>
+            <% for (var j=0; j<3; j++) {
+                 for (var k=0; k<7; k++) {
+                   var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : "";
+            %>
+            <td class="checkin-cell<%= currMonth%>">
+                <%= dates[j].getDate() %>
+            </td>
+            <%     dates[j].setDate(dates[j].getDate()+1);
+                 }
                }
-             }
-          %>
-        </tr>
-        <% } %>
-      </table>
-    </div>
-    <div id="habit-container">
-        <ul id="habit-list">
-        </ul>
-    </div>
-    <div id="toolbar">
-      <button id="new-habit" class="button">新建</button>
-      <button id="manage-habits" class="button">管理</button>
-      <button id="clear-log" class="button">清除调试日志</button>
+            %>
+          </tr>
+          <% } %>
+        </table>
+      </div>
+      <div id="habit-container">
+          <ul id="habit-list" class="list-group">
+          </ul>
+      </div>
+    </div> <!-- body -->
+    <div id="toolbar" class="container">
+      <div class="row">
+        <div class="col-xs-offset-4 col-xs-4">
+          <button id="new-habit" class="btn btn-default">新建</button>
+        </div>
+        <div class="col-xs-4">
+          <button id="manage-habits" class="btn btn-default">管理</button>
+        </div>
+        <div class="col-xs-4">
+          <button id="clear-log" class="btn">清除调试日志</button>
+        </div>
+      </div>
     </div>
     <div id="debug-log">
     </div>
