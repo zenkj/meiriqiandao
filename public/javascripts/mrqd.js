@@ -164,9 +164,9 @@ $(document).ready(function() {
     function updateHabit(habit) {
         $('.checkin-count', habit.dom).text(checkinCount(habit));
         if (habit == T.currentHabit) {
-            $(habit.dom).addClass('current-habit');
+            $(habit.dom).addClass('active');
         } else {
-            $(habit.dom).removeClass('current-habit');
+            $(habit.dom).removeClass('active');
         }
     }
 
@@ -183,15 +183,15 @@ $(document).ready(function() {
             habit = M.habits[i];
             if (refresh) {
                 $habit = $('<li></li>');
-                $habit[0].habit = habit;
+                $habit.data('model', habit);
                 habit.dom = $habit[0];
-                $habit.addClass('habit');
-                $habit.addClass('list-group-item');
+                $habit.addClass('habit list-group-item');
                 $habit.text(habit.name);
                 $habit.append('<span class="badge checkin-count"></span>');
                 $habit.appendTo($list);
                 new Hammer($habit[0]).on('tap', function(e) {
-                    T.currentHabit = e.target.habit || e.target.parentNode.habit;
+                    var $target = $(e.target);
+                    T.currentHabit = $target.data('model') || $target.parent().data('model');
                     updateHabits();
                 });
             }
@@ -704,63 +704,61 @@ $(document).ready(function() {
     });
 
 
-    function login() {
-        Dialog.login(function() {
-        
-        },
-        function() {
-        });
-    }
-
-    function signup() {
-        Dialog.signup(function() {
-        },
-        function() {
-        });
-    }
-
-    $('.login').each(function() {
+    $('#to-signup').each(function() {
         var hc = new Hammer(this);
         hc.on('tap', function() {
-            login();
+            var $login = $('#dialog-login');
+            $login.modal('hide');
+            $login.one('hidden.bs.modal', function() {
+                var $signup = $('#dialog-signup');
+                $signup.modal('show');
+            });
         });
     });
 
-
-    $('.signup').each(function() {
+    $('#to-login').each(function() {
         var hc = new Hammer(this);
         hc.on('tap', function() {
-            signup();
+            var $signup = $('#dialog-signup');
+            $signup.modal('hide');
+            $signup.one('hidden.bs.modal', function() {
+                var $login = $('#dialog-login');
+                $login.modal('show');
+            });
         });
     });
 
-    $('.user-config').each(function() {
+    $('#button-signup').each(function() {
         var hc = new Hammer(this);
         hc.on('tap', function() {
+            var $dialog = $('#dialog-signup');
+            var phone = $('#signup-phone').val();
+            var email = $('#signup-email').val();
+            var password1 = $('#signup-password').val();
+            var password2 = $('#signup-password-again').val();
+            ajax.post('/signup', {
+                phone: phone,
+                email: email,
+                password: password1,
+            }, function(data) {
+                $dialog.modal('hide');
+            }, function(xhr, err) {
+            });
         });
     });
 
-
-    $('.logout').each(function() {
+    $('#button-login').each(function() {
         var hc = new Hammer(this);
         hc.on('tap', function() {
-        });
-    });
-
-
-
-
-    $('.to-signup').each(function() {
-        var hc = new Hammer(this);
-        hc.on('tap', function() {
-            signup();
-        });
-    });
-
-    $('.to-login').each(function() {
-        var hc = new Hammer(this);
-        hc.on('tap', function() {
-            login();
+            var $dialog = $('#dialog-login');
+            var user = $('#login-user').val();
+            var password = $('#login-password').val();
+            ajax.post('/login', {
+                user: user,
+                password: password,
+            }, function(data) {
+            }, function(xhr, err) {
+            });
         });
     });
 

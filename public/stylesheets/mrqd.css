@@ -1,3 +1,7 @@
+html, body {
+    overflow: hidden;
+}
+
 nav {
     margin: 0;
     padding: 5px;
@@ -35,12 +39,14 @@ nav * {
     float: right;
     margin-left: 5px;
     cursor: pointer;
-    color: black;
+    color: red;
 }
 
+/*
 .login:hover, .signup:hover, .user-config:hover, .logout:hover {
     color: gray;
 }
+*/
 
 nav.no-user .login, nav.no-user .signup, nav .user-config, nav .logout {
     display: block;
@@ -168,21 +174,19 @@ td.wait-server-response {
     display: block;
     padding: 10px 15px;
 }
-*/
 
-/*
 .habit:first-child {
     border-top: 1px solid #ddd;
-}
-*/
-
-.habit:hover {
-    background-color: #ddd;
 }
 
 .current-habit {
     color: #fff;
     background-color: #337ab7 !important;
+}
+*/
+
+.habit:hover {
+    background-color: #ddd;
 }
 
 
@@ -203,165 +207,16 @@ td.wait-server-response {
 
 
 /* Dialog Begin */
-.dialog-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+
+#login-error {
     display: none;
 }
 
-.dialog-container.display {
-    display: block;
-}
-
-.dialog-background {
-    background-color: black;
-    opacity: 0;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.dialog-container.display .dialog-background {
-    opacity: 0.4;
-    /* X5 engine in weixin need -webkit- */
-    -webkit-transition: opacity 0.3s ease-out;
-    -moz-transition: opacity 0.3s ease-out;
-    -o-transition: opacity 0.3s ease-out;
-    transition: opacity 0.3s ease-out;
-}
-
-.dialog {
-    background-color: white;
-    border: 1px solid black;
-    border-radius: 6px;
-    -webkit-box-shadow: 0 3px 9px rgba(0,0,0,.5);
-    box-shadow: 0 3px 9px rgba(0,0,0,.5);
-    position: relative;
-    width: 60%;
-    height: 30%;
-    margin: 0 auto;
-
-    display: none;
-}
-
-.dialog.display {
-    display: block;
-
-    -webkit-transform: translateY(50px);
-    -moz-transform: translateY(50px);
-    -o-transform: translateY(50px);
-    transform: translateY(50px);
-
-    /* X5 engine in weixin need -webkit- */
-    -webkit-transition: transform 0.3s ease-out;
-    -moz-transition: transform 0.3s ease-out;
-    -o-transition: transform 0.3s ease-out;
-    transition: transform 0.3s ease-out;
-}
-
-.dialog-info {
-
-}
-
-.dialog-yesno {
-}
-
-.dialog-login {
-    height: 50%;
-}
-
-.dialog-signup {
-    height: 60%;
-}
-
-.dialog-title {
-    background-color: #428bca;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 20%;
-    text-align: center;
-    padding: 10px;
-    font-weight: 600;
-}
-
-.dialog-message {
-    position: absolute;
-    top: 20%;
-    left: 0;
-    width: 100%;
-    height: 60%;
-    text-align: center;
-    padding: 20px;
-}
-
-.dialog-content {
-    position: absolute;
-    top: 20%;
-    left: 0;
-    width: 100%;
-    height: 60%;
-    text-align: center;
-    padding: 20px;
-}
-
-.to-signup, .to-login {
+#to-signup, #to-login {
     color: red;
     cursor: pointer;
 }
 
-.to-signup:hover, .to-login:hover {
-    color: #900;
-}
-
-.dialog-input-container {
-    position: relative;
-}
-
-.dialog-input {
-    display: table;
-    position: relative;
-    margin-bottom: 10px;
-    color: red;
-    width: 90%;
-}
-
-.dialog-input input, .dialog-input span {
-    display: table-cell;
-}
-
-.dialog-button-bar {
-    position: absolute;
-    top: 80%;
-    left: 0;
-    width: 100%;
-    height: 20%;
-}
-
-.dialog-button-bar:after {
-    clear: both;
-}
-
-.dialog-button-ok {
-    margin-right: 30px;
-    float: right;
-}
-
-.dialog-button-yes {
-    margin-right: 30px;
-    float: right;
-}
-
-.dialog-button-no {
-    margin-right: 30px;
-    float: right;
-}
 /* Dialog End */
 
 /* Debug Begin */

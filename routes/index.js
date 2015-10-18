@@ -42,7 +42,7 @@ router.get('/', function(req, res, next) {
     });
 });
 
-router.get('/logout', function(req, res) {
+router.post('/logout', function(req, res) {
 });
 
 router.post('/login', function(req, res) {
