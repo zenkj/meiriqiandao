@@ -31,58 +31,63 @@
 
 
     <div class="body">
-      <div class="container checkin-header">
-        <div class="row">
-          <div class="col-xs-offset-3 col-xs-6 col-md-offset-4 col-md-4"> 
-            <h3 class="year-month"><span class="current-year"><%= date.getFullYear() %></span>年<span class="current-month"><%= date.getMonth()+1 %></span>月</h3>
-          </div>
-          <div class="col-xs-3 col-md-4">
-            <button class="btn btn-default return-today">回今天</button>
+      <div class="checkin-body">
+        <div class="container checkin-header">
+          <div class="row">
+            <div class="col-xs-offset-3 col-xs-6 col-md-offset-4 col-md-4"> 
+              <h3 class="year-month"><span class="current-year"><%= date.getFullYear() %></span>年<span class="current-month"><%= date.getMonth()+1 %></span>月</h3>
+            </div>
+            <div class="col-xs-3 col-md-4">
+              <button class="btn btn-default return-today">回今天</button>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="checkin-container">
-        <table class="checkin-table">
-          <tr>
-            <% for (var i=0; i<3; i++) { %>
-            <th>周一</th><th>周二</th><th>周三</th><th>周四</th>
-            <th>周五</th><th>周六</th><th>周日</th>
-            <% } %>
-          </tr>
-          <% var time = date.getTime();
-             var dates = [new Date(time), new Date(time), new Date(time)];
-             var months = [];
-             dates.forEach(function(d, i) {
-                 d.setMonth(d.getMonth()+i-1);
-                 d.setDate(1);
-                 months[i] = d.getMonth();
-                 var day = d.getDay() - 1;
-                 day = day < 0 ? day + 7 : day;
-                 d.setDate(d.getDate() - day);
-             });
-             for (var i=0; i<6; i++) {
-          %>
-          <tr>
-            <% for (var j=0; j<3; j++) {
-                 for (var k=0; k<7; k++) {
-                   var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : "";
+        <div class="checkin-container">
+          <table class="checkin-table">
+            <tr>
+              <% for (var i=0; i<3; i++) { %>
+              <th>周一</th><th>周二</th><th>周三</th><th>周四</th>
+              <th>周五</th><th>周六</th><th>周日</th>
+              <% } %>
+            </tr>
+            <% var time = date.getTime();
+               var dates = [new Date(time), new Date(time), new Date(time)];
+               var months = [];
+               dates.forEach(function(d, i) {
+                   d.setMonth(d.getMonth()+i-1);
+                   d.setDate(1);
+                   months[i] = d.getMonth();
+                   var day = d.getDay() - 1;
+                   day = day < 0 ? day + 7 : day;
+                   d.setDate(d.getDate() - day);
+               });
+               for (var i=0; i<6; i++) {
             %>
-            <td class="checkin-cell<%= currMonth%>">
-                <%= dates[j].getDate() %>
-            </td>
-            <%     dates[j].setDate(dates[j].getDate()+1);
+            <tr>
+              <% for (var j=0; j<3; j++) {
+                   for (var k=0; k<7; k++) {
+                     var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : "";
+              %>
+              <td class="checkin-cell<%= currMonth%>">
+                  <%= dates[j].getDate() %>
+              </td>
+              <%     dates[j].setDate(dates[j].getDate()+1);
+                   }
                  }
-               }
-            %>
-          </tr>
-          <% } %>
-        </table>
-      </div>
-      <div id="habit-container">
-          <ul id="habit-list" class="list-group">
-          </ul>
-      </div>
-    </div> <!-- body -->
+              %>
+            </tr>
+            <% } %>
+          </table>
+        </div>
+        <div id="habit-container">
+            <ul id="habit-list" class="list-group">
+            </ul>
+        </div>
+      </div> <!-- .checkin-body -->
+
+      <div class="manage-body">
+      </div> <!-- .manage-body -->
+    </div> <!-- .body -->
 
 
     <div id="toolbar" class="container">
@@ -102,6 +107,7 @@
 
     <div id="debug-log">
     </div>
+
 
     <div class="modal fade" id="dialog-login" tabindex="-1" role="dialog" aria-labelledby="dialog-login-title">
       <div class="modal-dialog" role="document">
@@ -146,6 +152,49 @@
               <input type="text" class="form-control" id="signup-phone" placeholder="手机号" aria-describedby="signup-phone-desc">
               <span class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>
               <span id="signup-phone-desc" class="sr-only">请输入合法的手机号码，11位阿拉伯数字</span>
+            </div>
+            <div class="form-group has-error has-feedback">
+              <label class="control-label" for="signup-email">邮箱</label>
+              <input type="text" class="form-control" id="signup-email" placeholder="邮箱" aria-describedby="signup-email-desc">
+              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
+              <span id="signup-email-desc" class="sr-only">请输入合法的邮箱</span>
+            </div>
+            <div class="form-group has-error has-feedback">
+              <label class="control-label" for="signup-password">密码</label>
+              <input type="text" class="form-control" id="signup-password" placeholder="密码" aria-describedby="signup-password-desc">
+              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
+              <span id="signup-password-desc" class="sr-only">请输入密码，最少6位</span>
+            </div>
+            <div class="form-group has-error has-feedback">
+              <label class="control-label" for="signup-password-again">重复密码</label>
+              <input type="text" class="form-control" id="signup-password-again" placeholder="重复密码" aria-describedby="signup-password-desc">
+              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
+              <span id="signup-password-desc" class="sr-only">请重复输入密码，与上一个输入相同</span>
+            </div>
+            <p>已有账号？<span id="to-login">登录</span></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary" id="button-signup">注册</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="modal fade" id="dialog-new-habit" tabindex="-1" role="dialog" aria-labelledby="dialog-new-habit-title">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+            <h2 class="modal-title" id="dialog-new-habit-title">创建新习惯</h2>
+          </div>
+          <div class="modal-body">
+            <div class="form-group has-success has-feedback">
+              <label class="control-label" for="new-habit-name">名字</label>
+              <input type="text" class="form-control" id="new-habit-name" placeholder="新习惯名字" aria-describedby="new-habit-name-desc">
+              <span class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>
+              <span id="new-habit-name-desc" class="sr-only">请输入新习惯名字</span>
             </div>
             <div class="form-group has-error has-feedback">
               <label class="control-label" for="signup-email">邮箱</label>
