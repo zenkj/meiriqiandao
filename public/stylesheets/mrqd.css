@@ -233,6 +233,8 @@ td.wait-server-response {
 
 #to-signup, #to-login {
     color: red;
+    font-size: 20px;
+    font-weight: 800;
     cursor: pointer;
 }
 

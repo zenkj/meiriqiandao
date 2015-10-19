@@ -94,7 +94,7 @@
           <button id="new-habit" class="btn btn-primary" data-toggle="modal" data-target="#dialog-new-habit">新建</button>
         </div>
         <div class="col-xs-4">
-          <button id="manage-habits" class="btn btn-default">管理</button>
+          <button id="manage-habits" class="btn btn-default" data-toggle="modal" data-target="#dialog-info">管理</button>
         </div>
         <div class="col-xs-4">
           <button id="clear-log" class="btn">清除调试日志</button>
@@ -107,7 +107,26 @@
     </div>
 
 
+    <!-- 对话框：显示信息 -->
+    <div class="modal fade" id="dialog-info" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="dialog-info-title">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+            <h2 class="modal-title" id="dialog-info-title">提示</h2>
+          </div>
+          <div class="modal-body">
+            <p id="dialog-info-message">提示信息</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">知道了</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
+
+    <!-- 对话框：登录 -->
     <div class="modal fade" id="dialog-login" tabindex="-1" role="dialog" aria-labelledby="dialog-login-title">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -138,6 +157,7 @@
     </div>
 
 
+    <!-- 对话框：注册 -->
     <div class="modal fade" id="dialog-signup" tabindex="-1" role="dialog" aria-labelledby="dialog-signup-title">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -148,13 +168,18 @@
           <div class="modal-body">
             <p class="error-message">密码不匹配，请重试</p>
             <div class="form-group">
+              <label class="control-label" for="signup-name">名字</label>
+              <input type="text" class="form-control" id="signup-name" placeholder="名字" aria-describedby="signup-name-desc">
+              <span id="signup-name-desc" class="sr-only">请输入用户名，登录后展示在页面上</span>
+            </div>
+            <div class="form-group">
               <label class="control-label" for="signup-phone">手机号</label>
               <input type="text" class="form-control" id="signup-phone" placeholder="手机号" aria-describedby="signup-phone-desc">
               <span id="signup-phone-desc" class="sr-only">请输入合法的手机号码，11位阿拉伯数字</span>
             </div>
             <div class="form-group">
               <label class="control-label" for="signup-email">邮箱</label>
-              <input type="text" class="form-control" id="signup-email" placeholder="邮箱" aria-describedby="signup-email-desc">
+              <input type="email" class="form-control" id="signup-email" placeholder="邮箱" aria-describedby="signup-email-desc">
               <span id="signup-email-desc" class="sr-only">请输入合法的邮箱</span>
             </div>
             <div class="form-group">
@@ -167,7 +192,7 @@
               <input type="password" class="form-control" id="signup-password-again" placeholder="重复密码" aria-describedby="signup-password-desc">
               <span id="signup-password-desc" class="sr-only">请重复输入密码，与上一个输入相同</span>
             </div>
-            <p>已有账号？<span id="to-login">登录</span></p>
+            <p>已有账号？<a id="to-login">登录</a></p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
@@ -178,6 +203,7 @@
     </div>
 
 
+    <!-- 对话框：创建新习惯 -->
     <div class="modal fade" id="dialog-new-habit" tabindex="-1" role="dialog" aria-labelledby="dialog-new-habit-title">
       <div class="modal-dialog" role="document">
         <div class="modal-content">

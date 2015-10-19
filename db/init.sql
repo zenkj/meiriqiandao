@@ -4,10 +4,10 @@ use mrqd;
 
 drop table if exists users;
 create table if not exists users (id int not null auto_increment,
-                    email varchar(254), -- should <256, or fail as a key
-                    phone varchar(20),
-                    password varchar(32),
                     name varchar(64) not null,
+                    phone varchar(20),
+                    email varchar(254), -- should <256, or fail as a key
+                    password varchar(32),
                     primary key (id),
                     unique (email),
                     unique (phone));

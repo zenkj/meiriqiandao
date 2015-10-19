@@ -3,8 +3,8 @@ $(document).ready(function() {
 // Global Data Begin-------------------------------
     // model data
     var M = {
-        userid: 0,
-        username: '',
+        userid: -1,
+        username: '签到君',
         version: 0,
         habits: [],
     };
@@ -706,8 +706,9 @@ $(document).ready(function() {
 
     $('#to-signup').each(function() {
         var hc = new Hammer(this);
-        hc.on('tap', function() {
+        hc.on('tap', function(e) {
             var $login = $('#dialog-login');
+            e.preventDefault();
             $login.modal('hide');
             $login.one('hidden.bs.modal', function() {
                 var $signup = $('#dialog-signup');
@@ -718,8 +719,9 @@ $(document).ready(function() {
 
     $('#to-login').each(function() {
         var hc = new Hammer(this);
-        hc.on('tap', function() {
+        hc.on('tap', function(e) {
             var $signup = $('#dialog-signup');
+            e.preventDefault();
             $signup.modal('hide');
             $signup.one('hidden.bs.modal', function() {
                 var $login = $('#dialog-login');
@@ -729,6 +731,8 @@ $(document).ready(function() {
     });
 
     function setError($e, msg) {
+        if (!$e || $e.length == 0)
+            return;
         var $p = $e.parent();
         var $pp = $p.parent();
         var $msg = $('.error-message', $pp)
@@ -737,7 +741,7 @@ $(document).ready(function() {
         if ($p.hasClass('has-feedback')) {
             var $f = $('.form-control-feedback', $p);
             $f.removeClass('glyphicon-ok');
-            $f.add('glyphicon-remove');
+            $f.addClass('glyphicon-remove');
         } else {
             $p.addClass('has-feedback');
             $p.append('<span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>');
@@ -751,17 +755,33 @@ $(document).ready(function() {
     }
 
     function setSuccess($e) {
+        if (!$e || $e.length == 0)
+            return;
         var $p = $e.parent();
         $p.removeClass('has-error');
         $p.addClass('has-success');
         if ($p.hasClass('has-feedback')) {
             var $f = $('.form-control-feedback', $p);
             $f.removeClass('glyphicon-remove');
-            $f.add('glyphicon-ok');
+            $f.addClass('glyphicon-ok');
         } else {
             $p.addClass('has-feedback');
             $p.append('<span class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>');
         }
+    }
+
+    function removeCheck($e) {
+        var $p = $e.parent();
+        $p.removeClass('has-success');
+        $p.removeClass('has-error');
+        $p.removeClass('has-feedback');
+        $('.form-control-feedback', $p).remove();
+    }
+
+    function infoDialog(title, msg) {
+        $('#dialog-info-title').text(title||'提示');
+        $('#dialog-info-message').text(msg||'提示信息');
+        $('#dialog-info').modal('show');
     }
 
 
@@ -769,21 +789,89 @@ $(document).ready(function() {
         var hc = new Hammer(this);
         hc.on('tap', function() {
             var $dialog = $('#dialog-signup');
-            var phone = $('#signup-phone').val();
-            var email = $('#signup-email').val();
-            var password1 = $('#signup-password').val();
-            var password2 = $('#signup-password-again').val();
-            if (password1 !== password2) {
-                setError($('#signup-password-again'), '重复密码不匹配');
-                return;            
+            var $errmsg = $('error-message', $dialog);
+            var $name = $('#signup-name');
+            var $phone = $('#signup-phone');
+            var $email = $('#signup-email');
+            var $password1 = $('#signup-password');
+            var $password2 = $('#signup-password-again');
+            var $password = $('#signup-password, #signup-password-again');
+            var name = $.trim($name.val() || '');
+            var phone = $.trim($phone.val() ||'');
+            var email = $.trim($email.val() ||'');
+            var password1 = $.trim($password1.val() ||'');
+            var password2 = $.trim($password2.val() ||'');
+            var phone1 = (phone.match(/\d+/g)||[])[0];
+
+            $errmsg.css('display', 'none');
+            removeCheck($name);
+            removeCheck($phone);
+            removeCheck($email);
+            removeCheck($password1);
+            removeCheck($password2);
+
+            if (name.length == 0) {
+                setError($name, '名字不能为空');
+                return;
+            } else {
+                setSuccess($name);
             }
+
+            if (!phone1 || phone1 != phone || phone1.length != 11) {
+                setError($phone, '手机号格式错误，请输入11个阿拉伯数字');
+                return;
+            } else {
+                setSuccess($phone);
+            }
+
+            if (email.length > 0 && !email.match(/^([\w.-]+)@(.*)(\.\w+)$/)) {
+                setError($email, '邮箱格式错误');
+                return;
+            } else {
+                setSuccess($email);
+            }
+
+            if (password1.length < 6) {
+                setError($password1, '密码长度不足6个字符');
+                return;            
+            } else {
+                setSuccess($password1);
+            }
+
+            if (password1 !== password2) {
+                setError($password, '密码不匹配');
+                return;            
+            } else {
+                setSuccess($password2);
+            }
+
             ajax.post('/signup', {
+                name: name,
                 phone: phone,
                 email: email,
                 password: password1,
             }, function(data) {
+                if (data.error) {
+                    var ids = {
+                        name: $name,
+                        phone: $phone,
+                        email: $email,
+                        password: $password,
+                    };
+                    setError(ids[data.data] || $name, data.msg);
+                    return;
+                }
+                    
                 $dialog.modal('hide');
+                $dialog.one('hidden.bs.modal', function() {
+                    $errmsg.css('display', 'none');
+                    infoDialog('注册成功！', '请使用手机号或邮箱登录');
+                });
             }, function(xhr, err) {
+                $dialog.modal('hide');
+                $dialog.one('hidden.bs.modal', function() {
+                    infoDialog('注册失败！',  err);
+                });
             });
         });
     });
@@ -792,13 +880,50 @@ $(document).ready(function() {
         var hc = new Hammer(this);
         hc.on('tap', function() {
             var $dialog = $('#dialog-login');
-            var user = $('#login-user').val();
-            var password = $('#login-password').val();
+            var $user = $('#login-user');
+            var $password = $('#login-password');
+            var $errmsg = $('.error-message', $dialog);
+            var $all = $('#login-user,#login-password');
+            var user = $.trim($user.val() || '');
+            var password = $.trim($password.val() || '');
+
+            var phone = (user.match(/\d+/g) || [])[0];
+            var email = user.match(/^([\w.-]+)@(.*)(\.\w+)$/);
+
+            $errmsg.css('display', 'none');
+            removeCheck($user);
+            removeCheck($password);
+
+            if (user.length == 0 || ((phone!=user || phone.length!=11) && !email)) {
+                setError($user, '请使用邮箱或手机号登录');
+                return;
+            }
+
+            if (password.length == 0) {
+                setError($password, '密码不能为空');
+                return;
+            }
+
             ajax.post('/login', {
                 user: user,
                 password: password,
             }, function(data) {
+                if (data.error) {
+                    setError($all, '邮箱、手机号或密码错误，请重试');
+                    return;
+                }
+
+                M.userid = data.userid;
+                M.username = data.username;
+
+                $errmsg.css('display', 'none');
+                $dialog.modal('hide');
+                refresh();
             }, function(xhr, err) {
+                $dialog.modal('hide');
+                $dialog.one('hidden.bs.modal', function() {
+                    infoDialog('登录失败！', err);
+                });
             });
         });
     });
@@ -831,6 +956,12 @@ $(document).ready(function() {
     }
 
     function refresh() {
+        if (M.userid < 0) {
+            $('nav').addClass('no-user');
+        } else {
+            $('nav').removeClass('no-user');
+        }
+        $('.user').text(M.username);
         ajax.get('/api/v1/checkins', {version: M.version},
                  function(data) {
                     var i;
