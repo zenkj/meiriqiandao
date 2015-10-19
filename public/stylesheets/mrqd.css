@@ -100,7 +100,7 @@ nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
 }
 
 .checkin-table {
-    position: absolute;
+    /*position: absolute;*/
     left: -100%;
     width: 300%;
     height: 100%;

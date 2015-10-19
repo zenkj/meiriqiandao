@@ -93,7 +93,7 @@
     <div id="toolbar" class="container">
       <div class="row">
         <div class="col-xs-offset-4 col-xs-4">
-          <button id="new-habit" class="btn btn-default">新建</button>
+          <button id="new-habit" class="btn btn-primary" data-toggle="modal" data-target="#dialog-new-habit">新建</button>
         </div>
         <div class="col-xs-4">
           <button id="manage-habits" class="btn btn-default">管理</button>
@@ -190,13 +190,54 @@
             <h2 class="modal-title" id="dialog-new-habit-title">创建新习惯</h2>
           </div>
           <div class="modal-body">
-            <div class="form-group has-success has-feedback">
+            <div class="form-group">
               <label class="control-label" for="new-habit-name">名字</label>
               <input type="text" class="form-control" id="new-habit-name" placeholder="新习惯名字" aria-describedby="new-habit-name-desc">
-              <span class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>
               <span id="new-habit-name-desc" class="sr-only">请输入新习惯名字</span>
             </div>
-            <div class="form-group has-error has-feedback">
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" value="1">
+                周一
+              </label>
+            </div>
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" value="2">
+                周二
+              </label>
+            </div>
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" value="3">
+                周三
+              </label>
+            </div>
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" value="4">
+                周四
+              </label>
+            </div>
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" value="5">
+                周五
+              </label>
+            </div>
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" value="6">
+                周六
+              </label>
+            </div>
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" value="7">
+                周日
+              </label>
+            </div>
+            <div class="form-group">
               <label class="control-label" for="signup-email">邮箱</label>
               <input type="text" class="form-control" id="signup-email" placeholder="邮箱" aria-describedby="signup-email-desc">
               <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
