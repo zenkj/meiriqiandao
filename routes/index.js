@@ -49,6 +49,9 @@ router.post('/login', function(req, res) {
 });
 
 router.post('/signup', function(req, res) {
+    console.log('phone:  ' + req.params.phone);
+    console.log('phone:  ' + req.params.email);
+    console.log('phone:  ' + req.params.password);
 });
 
 router.put('/user-config', function(req, res) {

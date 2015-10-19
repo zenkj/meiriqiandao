@@ -107,6 +107,7 @@
     </div>
 
 
+
     <div class="modal fade" id="dialog-login" tabindex="-1" role="dialog" aria-labelledby="dialog-login-title">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -115,7 +116,7 @@
             <h2 class="modal-title" id="dialog-login-title">登录</h2>
           </div>
           <div class="modal-body">
-            <p id="login-error">输入错误，请重试</p>
+            <p class="error-message">输入错误，请重试</p>
             <div class="form-group">
               <label class="control-label" for="login-user">邮箱 或 手机号</label>
               <input type="text" class="form-control" id="login-user" placeholder="邮箱或手机号" aria-describedby="login-user-desc">
@@ -123,7 +124,7 @@
             </div>
             <div class="form-group">
               <label class="control-label" for="login-password">密码</label>
-              <input type="text" class="form-control" id="login-password" placeholder="密码" aria-describedby="login-password-desc">
+              <input type="password" class="form-control" id="login-password" placeholder="密码" aria-describedby="login-password-desc">
               <span id="login-password-desc" class="sr-only">密码必须6位或6位以上</span>
             </div>
             <p>没有账号？<a id="to-signup">免费注册</a></p>
@@ -145,28 +146,25 @@
             <h2 class="modal-title" id="dialog-login-title">注册</h2>
           </div>
           <div class="modal-body">
-            <div class="form-group has-success has-feedback">
+            <p class="error-message">密码不匹配，请重试</p>
+            <div class="form-group">
               <label class="control-label" for="signup-phone">手机号</label>
               <input type="text" class="form-control" id="signup-phone" placeholder="手机号" aria-describedby="signup-phone-desc">
-              <span class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>
               <span id="signup-phone-desc" class="sr-only">请输入合法的手机号码，11位阿拉伯数字</span>
             </div>
-            <div class="form-group has-error has-feedback">
+            <div class="form-group">
               <label class="control-label" for="signup-email">邮箱</label>
               <input type="text" class="form-control" id="signup-email" placeholder="邮箱" aria-describedby="signup-email-desc">
-              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
               <span id="signup-email-desc" class="sr-only">请输入合法的邮箱</span>
             </div>
-            <div class="form-group has-error has-feedback">
+            <div class="form-group">
               <label class="control-label" for="signup-password">密码</label>
-              <input type="text" class="form-control" id="signup-password" placeholder="密码" aria-describedby="signup-password-desc">
-              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
+              <input type="password" class="form-control" id="signup-password" placeholder="密码" aria-describedby="signup-password-desc">
               <span id="signup-password-desc" class="sr-only">请输入密码，最少6位</span>
             </div>
-            <div class="form-group has-error has-feedback">
+            <div class="form-group">
               <label class="control-label" for="signup-password-again">重复密码</label>
-              <input type="text" class="form-control" id="signup-password-again" placeholder="重复密码" aria-describedby="signup-password-desc">
-              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
+              <input type="password" class="form-control" id="signup-password-again" placeholder="重复密码" aria-describedby="signup-password-desc">
               <span id="signup-password-desc" class="sr-only">请重复输入密码，与上一个输入相同</span>
             </div>
             <p>已有账号？<span id="to-login">登录</span></p>
@@ -193,71 +191,54 @@
               <input type="text" class="form-control" id="new-habit-name" placeholder="新习惯名字" aria-describedby="new-habit-name-desc">
               <span id="new-habit-name-desc" class="sr-only">请输入新习惯名字</span>
             </div>
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" value="1">
-                周一
-              </label>
-            </div>
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" value="2">
-                周二
-              </label>
-            </div>
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" value="3">
-                周三
-              </label>
-            </div>
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" value="4">
-                周四
-              </label>
-            </div>
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" value="5">
-                周五
-              </label>
-            </div>
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" value="6">
-                周六
-              </label>
-            </div>
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" value="7">
-                周日
-              </label>
-            </div>
-            <div class="form-group">
-              <label class="control-label" for="signup-email">邮箱</label>
-              <input type="text" class="form-control" id="signup-email" placeholder="邮箱" aria-describedby="signup-email-desc">
-              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
-              <span id="signup-email-desc" class="sr-only">请输入合法的邮箱</span>
-            </div>
-            <div class="form-group has-error has-feedback">
-              <label class="control-label" for="signup-password">密码</label>
-              <input type="text" class="form-control" id="signup-password" placeholder="密码" aria-describedby="signup-password-desc">
-              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
-              <span id="signup-password-desc" class="sr-only">请输入密码，最少6位</span>
-            </div>
-            <div class="form-group has-error has-feedback">
-              <label class="control-label" for="signup-password-again">重复密码</label>
-              <input type="text" class="form-control" id="signup-password-again" placeholder="重复密码" aria-describedby="signup-password-desc">
-              <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
-              <span id="signup-password-desc" class="sr-only">请重复输入密码，与上一个输入相同</span>
-            </div>
-            <p>已有账号？<span id="to-login">登录</span></p>
+            <ul class="list-inline">
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="1" checked>
+                  周一
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="2" checked>
+                  周二
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="3" checked>
+                  周三
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="4" checked>
+                  周四
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="5" checked>
+                  周五
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="6">
+                  周六
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="7">
+                  周日
+                </label>
+              </li>
+            </ul>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
-            <button type="button" class="btn btn-primary" id="button-signup">注册</button>
+            <button type="button" class="btn btn-primary" id="button-new-habit">创建</button>
           </div>
         </div>
       </div>

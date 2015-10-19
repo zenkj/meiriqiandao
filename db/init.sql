@@ -20,7 +20,7 @@ create table if not exists versions (uid int not null,
                        version int not null,
                        primary key (uid));
 
-insert into versions values(0,0);
+insert into versions values(-1,0);
 
 -- flag:0   1 this habbit is enabled, 0 disabled
 

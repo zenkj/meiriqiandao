@@ -64,6 +64,7 @@ nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
     left: 0;
     width: 100%;
     height: auto;
+    min-width: 320px;
     overflow: hidden;
 }
 
@@ -225,7 +226,8 @@ td.wait-server-response {
 
 /* Dialog Begin */
 
-#login-error {
+.error-message {
+    color: red;
     display: none;
 }
 

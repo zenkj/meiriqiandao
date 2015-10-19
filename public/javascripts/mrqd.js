@@ -728,6 +728,43 @@ $(document).ready(function() {
         });
     });
 
+    function setError($e, msg) {
+        var $p = $e.parent();
+        var $pp = $p.parent();
+        var $msg = $('.error-message', $pp)
+        $p.removeClass('has-success');
+        $p.addClass('has-error');
+        if ($p.hasClass('has-feedback')) {
+            var $f = $('.form-control-feedback', $p);
+            $f.removeClass('glyphicon-ok');
+            $f.add('glyphicon-remove');
+        } else {
+            $p.addClass('has-feedback');
+            $p.append('<span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>');
+        }
+
+        if (msg) {
+            $msg.text(msg).css({display: 'block'});
+        } else {
+            $msg.css({display: 'none'});
+        }
+    }
+
+    function setSuccess($e) {
+        var $p = $e.parent();
+        $p.removeClass('has-error');
+        $p.addClass('has-success');
+        if ($p.hasClass('has-feedback')) {
+            var $f = $('.form-control-feedback', $p);
+            $f.removeClass('glyphicon-remove');
+            $f.add('glyphicon-ok');
+        } else {
+            $p.addClass('has-feedback');
+            $p.append('<span class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>');
+        }
+    }
+
+
     $('#button-signup').each(function() {
         var hc = new Hammer(this);
         hc.on('tap', function() {
@@ -736,6 +773,10 @@ $(document).ready(function() {
             var email = $('#signup-email').val();
             var password1 = $('#signup-password').val();
             var password2 = $('#signup-password-again').val();
+            if (password1 !== password2) {
+                setError($('#signup-password-again'), '重复密码不匹配');
+                return;            
+            }
             ajax.post('/signup', {
                 phone: phone,
                 email: email,
