@@ -38,7 +38,7 @@ nav * {
 
 .login, .signup, .user-config, .logout {
     float: right;
-    margin-left: 5px;
+    margin-left: 20px;
     cursor: pointer;
     color: red;
 }
@@ -233,7 +233,7 @@ td.wait-server-response {
 
 #to-signup, #to-login {
     color: red;
-    font-size: 20px;
+    /*font-size: 20px;*/
     font-weight: 800;
     cursor: pointer;
 }

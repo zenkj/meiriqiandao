@@ -11,20 +11,23 @@ var dbpool = mysql.createPool({
     database: 'mrqd',
 });
 
+var DEFAULT_UID = -1;
+var DEFAULT_UNAME = '签到君';
+
 /* GET home page. */
 router.get('/', function(req, res, next) {
     var data = {
         title: '每日签到 - 养成好习惯',
         date: new Date(),
         user: {
-            id: -1,
-            name: '签到君',
+            id: DEFAULT_UID,
+            name: DEFAULT_UNAME,
         },
     };
 
     var uid = -1;
     if (typeof req.session.uid == 'undefined') {
-        req.session.uid = -1;
+        req.session.uid = DEFAULT_UID;
     } else {
         uid = +req.session.uid;
     }
@@ -37,7 +40,7 @@ router.get('/', function(req, res, next) {
         }
         if (rows.length == 0) {
             console.log('this session is wrong, the user id ' + uid + ' does not exist');
-            req.session = null;
+            req.session.destroy();
         } else {
             data.user.id = uid;
             data.user.name = rows[0].name;
@@ -46,9 +49,17 @@ router.get('/', function(req, res, next) {
     });
 });
 
+// @params: none 
+// @success return: {userid: -1, username: '签到君'}
 router.post('/logout', function(req, res) {
+    req.session.destroy(function(err) {
+        res.json({userid: DEFAULT_UID, username: DEFAULT_UNAME});
+    });
 });
 
+// @params: {user: 12345678901, password: 123} 
+// @success return: {userid: 13, username: 'abc'}
+// @error return: {error: true, msg: '...'}
 router.post('/login', function(req, res) {
     console.log('receive login');
     var user = req.body.user || '';
@@ -92,6 +103,10 @@ router.post('/login', function(req, res) {
     });
 });
 
+
+// @params: {phone: 12345678901, email: 'a@b.c', password: 123, name: 'ab'} 
+// @success return: {uid: 13}
+// @error return: {error: true, msg: '...'}
 router.post('/signup', function(req, res) {
     var phone = req.body.phone || '';
     var email = req.body.email || '';
@@ -123,31 +138,64 @@ router.post('/signup', function(req, res) {
 
     password = hash.hash(password);
 
-    dbpool.query('insert into users(email, phone, password, name) values(?,?,?,?)', [email, phone, password, name], function(err, rows, fields) {
+    dbpool.getConnection(function(err, conn) {
         if (err) {
-            var data = 'name';
-            var msg = '服务器内部错误，请联系管理员';
-            if (err.code == 'ER_DUP_ENTRY') {
-                if (err.message.indexOf("key 'email'") >= 0) {
-                    data = 'email';
-                    msg = '邮箱地址已经使用，请使用其他邮箱';
-                } else {
-                    data = 'phone';
-                    msg = '手机号已经使用，请使用其他手机号';
-                }
-            }
-            console.log('error: ' + err.message);
-            res.json({error: true, data: data, msg: msg});
+            console.log('get connection failed: ' + err);
+            ierr(res);
             return;
         }
-        dbpool.query('select id from users where phone = ?', [phone], function(err, rows) {
-            if (err || rows.length == 0) {
-                console.log('select failed');
+        conn.beginTransaction(function(err) {
+            if (err) {
+                console.log('begin transition failed: ' + err);
+                conn.release();
                 ierr(res);
                 return;
             }
-            dbpool.query('insert into versions values(?,?)', [rows[0].id, 0]);
-            res.json({uid: rows[0].id});
+            conn.query('insert into users(email, phone, password, name) values(?,?,?,?)', [email, phone, password, name], function(err, rows) {
+                if (err) {
+                    var data = 'name';
+                    var msg = '服务器内部错误，请联系管理员';
+                    if (err.code == 'ER_DUP_ENTRY') {
+                        if (err.message.indexOf("key 'email'") >= 0) {
+                            data = 'email';
+                            msg = '邮箱地址已经使用，请使用其他邮箱';
+                        } else {
+                            data = 'phone';
+                            msg = '手机号已经使用，请使用其他手机号';
+                        }
+                    }
+                    conn.rollback(function() {
+                        conn.release();
+                    });
+                    console.log('error: ' + err.message);
+                    res.json({error: true, data: data, msg: msg});
+                    return;
+                }
+                var userid = rows.insertId;
+                conn.query('insert into versions values(?,?)', [userid, 0], function(err, rows) {
+                    if (err) {
+                        conn.rollback(function() {
+                            conn.release();
+                        });
+                        console.log('error: ' + err.message);
+                        ierr(res);
+                        return;
+                    }
+                    conn.commit(function(err) {
+                        if (err) {
+                            conn.rollback(function() {
+                                conn.release();
+                            });
+                            console.log('error: ' + err.message);
+                            ierr(res);
+                            return;
+                        }
+                        conn.release();
+                        console.log('signup success for user ' + userid);
+                        res.json({uid: userid});
+                    });
+                });
+            });
         });
     });
 });
@@ -156,39 +204,113 @@ router.put('/user-config', function(req, res) {
 });
 
 
-// error message
-// {error: true, msg: 'error reason'}
-
 function ierr(res, msg) {
     res.json({error: true, msg: msg||'Internal Server Error'});
 }
 
-// {version: 12, name: 'abc', workday: [1,2,3,4,5]} 
+// @params: {version: 12, name: 'abc', workday: 120} 
+// @success return: {version: 13, habit: {id:12, name:'abc', workday: 120}}
+// @error return: {error: true, msg: '...'}
 router.post('/api/v1/habits', function(req, res) {
-  var data = {
-    version: 13,
-    habits: [
-      {
-        id: 1,
-        name: 'abc',
-        workday: [1,2,3,4,5],
-      },
-    ],
-  };
-  res.json(data);
+    var uid = req.session.userid;
+    if (!uid || uid == DEFAULT_UID) {
+        res.json({error: true, msg: '尚未登录，请登录后再创建习惯'});
+        return;
+    }
+    var version = +req.body.version;
+    var name = req.body.name;
+    var workday = ((+req.body.workday) & 0xFE);
+    var flag = 1; // new habit is always active
+
+    if (name.length == 0) {
+        ierr(res, '名字不合法');
+        return;
+    }
+
+    flag |= workday;
+
+    dbpool.getConnection(function(err, conn) {
+        if (err) {
+            console.log('get connection failed: ' + err);
+            ierr(res);
+            return;
+        }
+
+        conn.beginTransaction(function(err) {
+            if (err) {
+                console.log('begin transition failed: ' + err);
+                conn.release();
+                ierr(res);  
+                return;
+            }
+            conn.query('insert into habits(uid,name,flag) values(?,?,?)',
+                [uid, name, flag], function(err, result) {
+                    if (err) {
+                        var msg = '服务器内部错误，请联系管理员';
+                        if (err.code == 'ER_DUP_ENTRY') {
+                            msg = '该习惯已经存在，请使用其他名称创建';
+                        }
+                        console.log('error: ' + err.message);
+                        conn.rollback(function() {
+                            conn.release();
+                        });
+                        ierr(res, msg);
+                        return;
+                    }
+
+                    var hid = result.insertId;
+                    conn.query('update versions set version = version + 1 where uid = ?',
+                        [uid], function(err, result) {
+                            if (err) {
+                                console.log('update version failed for uid ' + uid);
+                                conn.rollback(function() {conn.release();});
+                                ierr(res);
+                                return;
+                            }
+                            conn.commit(function(err) {
+                                if (err) {
+                                    console.log('commit transition faialed');
+                                    conn.rollback(function() {conn.release();});
+                                    ierr(res);
+                                    return;
+                                }
+                                conn.query('select version from versions where uid = ?',
+                                    [uid], function(err, result) {
+
+                                        conn.release();
+
+                                        if (err || result.length == 0) {
+                                            console.log('select version for uid ' + uid + ' failed.');
+                                            // use version + 2 to trigger client refresh
+                                            res.json({version: version+2});
+                                            return;
+                                        }
+                                        version = result[0].version;
+                                        res.json({version: version,
+                                                habit: {
+                                                    id: hid,
+                                                    name: name,
+                                                    workday: workday,
+                                                    checkins:{}
+                                                }});
+                                    });
+                            });
+                        });
+                });
+        });
+    });
+
 });
 
-// {version: 12, name: 'abc', workday: [1,2,3,4,5], enable: false}
+// {version: 12, name: 'abc', workday: 122, enable: false}
 router.put('/api/v1/habits/:hid', function(req, res) {
   var data = {
     version: 13,
-    habits: [
-      {
+    habit: {
         id: 1,
         name: 'abc',
         workday: [1,2,3,4,5],
-      },
-    ],
+    },
   };
   res.json(data);
 });
@@ -212,9 +334,11 @@ router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
 });
 
 router.get('/api/v1/checkins', function(req, res) {
-    var uid = req.session.userid || -1;
+    var uid = req.session.userid || DEFAULT_UID;
+    var uname = req.session.username || DEFAULT_UNAME;
     var data = {
         uid: uid,
+        uname: uname,
         habits: [],
     };
     var habits = {};
@@ -226,7 +350,7 @@ router.get('/api/v1/checkins', function(req, res) {
             return;
         }
         if (rows.length == 0) {
-            console.log('error:  no version for user ' + uid);
+            console.log('error: no version specified for ' + uid);
             ierr(res);
             return;
         }
@@ -237,20 +361,21 @@ router.get('/api/v1/checkins', function(req, res) {
                 ierr(res);
                 return;
             }
+
+            //console.log('got ' + rows.length + ' habits for user ' + uid);
+
             if (rows.length == 0) {
                 res.json(data);
                 return;
             }
+
             var ids = [];
             for (var i=0; i<rows.length; i++) {
                 var id = rows[i].id;
                 var name = rows[i].name;
                 var flag = rows[i].flag;
-                var workday = [];
+                var workday = (flag & 0xFE);
                 ids.push(id);
-                for (var j=1; j<=7; j++) {
-                    if ((flag>>j)&1) workday.push(j);
-                }
                 habits[id] = {
                     id: id,
                     name: name,
@@ -266,6 +391,7 @@ router.get('/api/v1/checkins', function(req, res) {
                     ierr(res);
                     return;
                 }
+                //console.log('got ' + rows.length + ' checkins for user ' + uid);
                 for (i=0; i<rows.length; i++) {
                     h = habits[rows[i].hid];
                     h.checkins[rows[i].year] = [
@@ -284,63 +410,13 @@ router.get('/api/v1/checkins', function(req, res) {
                     ];
                 }
 
-                for (i=0; i<habits.length; i++) {
-                    data.habits.push(habits[i]);
+                for (h in habits) {
+                    data.habits.push(habits[h]);
                 }
                 res.json(data);
             });
         });
     });
-/*
-    console.log('get /api/v1/checkins: ' + req.path);
-  var data = {
-    uid: 0,
-    version: 12,
-    habits: [
-      {
-        id: 1,
-        name: '每天跑步5公里',
-        workday: [1,2,3,4,5,6],
-        checkins: {
-          '2014': [1,1,1,1,8,1,1,1,1,1,1,1],
-          '2015': [1,1,19,0,1,1,1,1,0,0,1,1],
-          '2016': [0,0,0,0,0,0,0,0,0,0,0,0],
-        },
-      },
-      {
-        id: 2,
-        name: '每天11:30前睡觉',
-        workday: [1,2,3,4,5,6,7],
-        checkins: {
-          '2014': [1,1,1,1,8,1,1,1,1,1,1,1],
-          '2015': [1,1,1,85,1,1,43,1,0,0,1,1],
-          '2016': [0,0,0,0,0,0,0,0,0,0,0,0],
-        },
-      },
-      {
-        id: 3,
-        name: '每天阅读半小时',
-        workday: [1,2,3,4,5,7],
-        checkins: {
-          '2014': [1,1,1,1,8,1,1,1,1,1,1,1],
-          '2015': [1,1,1,85,1,1,43,1,0,0,1,1],
-          '2016': [0,0,0,0,0,0,0,0,0,0,0,0],
-        },
-      },
-      {
-        id: 6,
-        name: '每周六陪父母聊天',
-        workday: [6],
-        checkins: {
-          '2014': [1,1,1,1,1,1,1,1,1,1,1,1],
-          '2015': [1,1,1,1,1,1,1,1,0,0,1,1],
-          '2016': [0,0,0,0,0,0,0,0,0,0,0,0],
-        },
-      },
-    ],
-  };
-  res.json(data);
-*/
 });
 
 router.get('/api/v1/whoami', function(req, res) {

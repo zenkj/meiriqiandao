@@ -5,7 +5,7 @@ $(document).ready(function() {
     var M = {
         userid: -1,
         username: '签到君',
-        version: 0,
+        version: -1,
         habits: [],
     };
 
@@ -96,15 +96,7 @@ $(document).ready(function() {
         if (!habit) return true;
         var weekday = date.getDay();
         weekday = weekday == 0 ? 7 : weekday;
-        var workday = true;
-        for (i=0; i<habit.workday.length; i++) {
-            if (weekday == habit.workday[i]) {
-                break;
-            }
-        }
-        if (i == habit.workday.length)
-            workday = false;
-        return workday;
+        return !!(habit.workday & (1<<weekday));
     }
 
     // update one checkin in table according to the habit setting
@@ -464,89 +456,6 @@ $(document).ready(function() {
     });
 // Adjust Date End---------------------------
 
-// Dialog Begin-------------------------------
-    var Dialog = (function() {
-        var okcb;
-        var yescb;
-        var nocb;
-
-        $('.dialog-button-ok').click(function(e) {
-            e.stopPropagation();
-            if (okcb) okcb();
-            okcb = null;
-            $('.dialog-container').removeClass('display');
-        });
-
-        $('.dialog-button-yes').click(function(e) {
-            e.stopPropagation();
-            if (yescb) yescb();
-            yescb = null;
-            $('.dialog-container').removeClass('display');
-        });
-
-        $('.dialog-button-no').click(function(e) {
-            e.stopPropagation();
-            if(nocb) nocb();
-            nocb = null;
-            $('.dialog-container').removeClass('display');
-        });
-
-        $('.dialog-background').each(function(){
-            var hc = new Hammer(this);
-            hc.on('tap', function() {
-                if (okcb) okcb();
-                if (nocb) nocb();
-                okcb = null;
-                nocb = null;
-                $('.dialog-container').removeClass('display');
-            });
-        });
-
-        function info(title, msg, cb) {
-            $('.dialog-info .dialog-title').text(title || '');
-            $('.dialog-info .dialog-message').text(msg || '');
-            $('.dialog').removeClass('display');
-            $('.dialog-container, .dialog-info').addClass('display');
-            okcb = cb;
-        }
-
-        function yesno(title, msg, ycb, ncb) {
-            $('.dialog-yesno .dialog-title').text(title || '');
-            $('.dialog-yesno .dialog-message').text(msg || '');
-            $('.dialog').removeClass('display');
-            $('.dialog-container, .dialog-yesno').addClass('display');
-
-            yescb = ycb;
-            nocb = ncb;
-        }
-
-        function signup(ycb, ncb) {
-            $('.dialog').removeClass('display');
-            $('.dialog-container, .dialog-signup').addClass('display');
-            yescb = ycb;
-            nocb = ncb;
-        }
-
-        function login(ycb, ncb) {
-            $('.dialog').removeClass('display');
-            $('.dialog-container, .dialog-login').addClass('display');
-            yescb = ycb;
-            nocb = ncb;
-        }
-
-        return {
-            info: info,
-            yesno: yesno,
-            signup: signup,
-            login: login,
-        };
-    })();
-
-    //Dialog.info('每日签到 - 养成好习惯', '欢迎欢迎', function() {log('end');});
-// Dialog End---------------------------------
-
-
-
 // Register Listeners Begin ---------------------
 
     $('.checkin-table').each(function() {
@@ -625,25 +534,25 @@ $(document).ready(function() {
 
         function toggleCheckin(e) {
             if (M.habits.length == 0) {
-                Dialog.info('提醒', '请先创建一个习惯');
+                infoDialog('提醒', '请先创建一个习惯');
                 return;
             }
 
             if (!T.currentHabit) {
-                Dialog.info('提醒', '请选择一个习惯');
+                infoDialog('提醒', '请选择一个习惯');
                 return;
             }
 
             var td = e.target;
             var $td = $(td);
-            if (!td.tposition) {
+            if (!$td.data('tposition')) {
                 log('td not in current table segment is clicked');
                 return;
             }
 
 
             var date = firstDayOfTable();
-            date.setDate(date.getDate()+td.tposition-1);
+            date.setDate(date.getDate()+$td.data('tposition')-1);
             var checkined = checkin(date);
 
             if ($td.hasClass('wait-server-response')) {
@@ -651,7 +560,7 @@ $(document).ready(function() {
                 return;
             }
 
-            if (M.userid == 0) {
+            if (M.userid < 0) {
                 // dummy user
                 checkin(date, !checkined);
                 updateHabit(T.currentHabit);
@@ -695,7 +604,7 @@ $(document).ready(function() {
             $tds = $('td', $tr);
             for (j=0; j<7; j++) {
                 $td = $tds.eq(j+7);
-                $td[0].tposition = k++;
+                $td.data('tposition', k++);
                 hc = new Hammer($td[0]);
                 hc.on('tap', toggleCheckin);
             }
@@ -784,6 +693,53 @@ $(document).ready(function() {
         $('#dialog-info').modal('show');
     }
 
+    function yesnoDialog(title, msg, yescb, nocb) {
+        var $dialog = $('#dialog-confirm')
+        $('#dialog-confirm-title').text(title||'确认');
+        $('#dialog-confirm-message').text(msg||'确认信息');
+        $dialog.data('confirmed', false);
+        $dialog.modal('show');
+        $dialog.one('hidden.bs.modal', function() {
+            if ($dialog.data('confirmed')) {
+                if (yescb) yescb();
+            } else {
+                if (nocb) nocb();
+            }
+        });
+    }
+
+    $('#button-confirm').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+            var $dialog = $('#dialog-confirm')
+            $dialog.data('confirmed', true);
+            $dialog.modal('hide');
+        });
+    });
+
+    $('#button-logout').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+            yesnoDialog('确认', '确认退出？',
+                function() {
+                    ajax.post('/logout', {},
+                        function(data) {
+                            if (data.error) {
+                                infoDialog('错误', '退出出错：' + data.msg);
+                            } else {
+                                M.userid = data.userid;
+                                M.username = data.username;
+                                M.version = -1;
+                                refresh();
+                            }
+                        }, function(xhr, err) {
+                            infoDialog('错误', '退出出错，请稍后再试');
+                        });
+                });
+        });
+        
+    });
+
 
     $('#button-signup').each(function() {
         var hc = new Hammer(this);
@@ -803,12 +759,18 @@ $(document).ready(function() {
             var password2 = $.trim($password2.val() ||'');
             var phone1 = (phone.match(/\d+/g)||[])[0];
 
-            $errmsg.css('display', 'none');
-            removeCheck($name);
-            removeCheck($phone);
-            removeCheck($email);
-            removeCheck($password1);
-            removeCheck($password2);
+
+            function init() {
+                $errmsg.css('display', 'none');
+                removeCheck($name);
+                removeCheck($phone);
+                removeCheck($email);
+                removeCheck($password1);
+                removeCheck($password2);
+            }
+
+            init();
+
 
             if (name.length == 0) {
                 setError($name, '名字不能为空');
@@ -862,12 +824,13 @@ $(document).ready(function() {
                     return;
                 }
                     
+                init();
                 $dialog.modal('hide');
                 $dialog.one('hidden.bs.modal', function() {
-                    $errmsg.css('display', 'none');
                     infoDialog('注册成功！', '请使用手机号或邮箱登录');
                 });
             }, function(xhr, err) {
+                init();
                 $dialog.modal('hide');
                 $dialog.one('hidden.bs.modal', function() {
                     infoDialog('注册失败！',  err);
@@ -915,6 +878,7 @@ $(document).ready(function() {
 
                 M.userid = data.userid;
                 M.username = data.username;
+                M.version = -1;
 
                 $errmsg.css('display', 'none');
                 $dialog.modal('hide');
@@ -923,6 +887,65 @@ $(document).ready(function() {
                 $dialog.modal('hide');
                 $dialog.one('hidden.bs.modal', function() {
                     infoDialog('登录失败！', err);
+                });
+            });
+        });
+    });
+
+
+    $('#button-new-habit').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+            var $dialog = $('#dialog-new-habit');
+            var $name = $('#new-habit-name');
+            var $workdays = $('#new-habit-workdays input:checked');
+            var $errmsg = $('.error-message', $dialog);
+            var name = $.trim($name.val() || '');
+            var workdays = 0;
+
+            function init() {
+                $errmsg.css('display', 'none');
+                removeCheck($name);
+            }
+            init();
+
+            if (name.length == 0) {
+                setError($name, '习惯名字不能为空！');
+                return;
+            }
+
+            $workdays.each(function() {
+                var wd = +$(this).val();
+                if (wd>=1 && wd<=7)
+                    workdays |= (1<<wd);
+            });
+
+            ajax.post('/api/v1/habits', {
+                version: M.version,
+                name: name,
+                workday: workdays
+            }, function(data) {
+                if (data.error) {
+                    setError($name, data.msg);
+                    return;
+                }
+
+                init();
+                $dialog.modal('hide');
+
+                if (data.version == M.version+1 && data.habit) {
+                    M.version += 1;
+                    M.habits.push(data.habit);
+                    M.currentHabit = data.habit;
+                    updateHabits(true);
+                } else {
+                    refresh();
+                }
+            }, function(xhr, err) {
+                init();
+                $dialog.modal('hide');
+                $dialog.one('hidden.bs.modal', function() {
+                    infoDialog('创建失败', err);
                 });
             });
         });
@@ -955,6 +978,7 @@ $(document).ready(function() {
         updateHabits(true);
     }
 
+    // refresh after having gotten the userid and username
     function refresh() {
         if (M.userid < 0) {
             $('nav').addClass('no-user');
@@ -965,8 +989,9 @@ $(document).ready(function() {
         ajax.get('/api/v1/checkins', {version: M.version},
                  function(data) {
                     var i;
-                    if (!data || data.error) {
+                    if (data.error) {
                         log('get checkins error: ' + data.msg);
+                        infoDialog('提示', '从服务器获取信息失败，请重新刷新');
                         return;
                     }
                     if (M.userid == data.uid && M.version == data.version) {
@@ -974,6 +999,7 @@ $(document).ready(function() {
                         return;
                     }
                     M.userid = data.uid;
+                    M.username = data.uname;
                     M.version = data.version;
                     M.habits = data.habits;
                     refreshView();

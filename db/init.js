@@ -7,7 +7,7 @@ var conn = db.createConnection({
     database: 'mrqd',
 });
 
-conn.query("select * from users where email = ?", ['aa@b.c'], function(err, rows) {
+conn.query("insert into users(name, phone, email, password) values('abc', '111', 'aaaa', 'ppp')", function(err, rows) {
     if (err) {
         console.log(err);
         conn.end();
@@ -15,6 +15,7 @@ conn.query("select * from users where email = ?", ['aa@b.c'], function(err, rows
     }
 
     console.log('total ' + rows.length + ' rows');
+    console.log('insertId is ' + rows.insertId);
 
     for (var i=0; i<rows.length; i++) {
         console.log(rows[i]);

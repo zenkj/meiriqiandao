@@ -26,7 +26,7 @@
       <a class="login" data-toggle="modal" data-target="#dialog-login">登录</a>
       <a class="signup" data-toggle="modal" data-target="#dialog-signup">免费注册</a>
       <a class="user-config" data-toggle="modal" data-target="#dialog-user-config">配置</a>
-      <a class="logout" data-toggle="modal" data-target="#dialog-logout">退出</a>
+      <a class="logout" id="button-logout">退出</a>
     </nav>
 
 
@@ -108,7 +108,7 @@
 
 
     <!-- 对话框：显示信息 -->
-    <div class="modal fade" id="dialog-info" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="dialog-info-title">
+    <div class="modal fade" id="dialog-info" tabindex="-1" role="dialog" aria-labelledby="dialog-info-title">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
@@ -126,6 +126,26 @@
     </div>
 
 
+    <!-- 对话框：确认 -->
+    <div class="modal fade" id="dialog-confirm" tabindex="-1" role="dialog" aria-labelledby="dialog-confirm-title">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+            <h2 class="modal-title" id="dialog-confirm-title">确认</h2>
+          </div>
+          <div class="modal-body">
+            <p id="dialog-confirm-message">确认信息</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary" id="button-confirm">确认</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <!-- 对话框：登录 -->
     <div class="modal fade" id="dialog-login" tabindex="-1" role="dialog" aria-labelledby="dialog-login-title">
       <div class="modal-dialog" role="document">
@@ -135,7 +155,7 @@
             <h2 class="modal-title" id="dialog-login-title">登录</h2>
           </div>
           <div class="modal-body">
-            <p class="error-message">输入错误，请重试</p>
+            <p class="error-message"></p>
             <div class="form-group">
               <label class="control-label" for="login-user">邮箱 或 手机号</label>
               <input type="text" class="form-control" id="login-user" placeholder="邮箱或手机号" aria-describedby="login-user-desc">
@@ -166,7 +186,7 @@
             <h2 class="modal-title" id="dialog-login-title">注册</h2>
           </div>
           <div class="modal-body">
-            <p class="error-message">密码不匹配，请重试</p>
+            <p class="error-message"></p>
             <div class="form-group">
               <label class="control-label" for="signup-name">名字</label>
               <input type="text" class="form-control" id="signup-name" placeholder="名字" aria-describedby="signup-name-desc">
@@ -212,12 +232,13 @@
             <h2 class="modal-title" id="dialog-new-habit-title">创建新习惯</h2>
           </div>
           <div class="modal-body">
+            <p class="error-message"></p>
             <div class="form-group">
               <label class="control-label" for="new-habit-name">名字</label>
               <input type="text" class="form-control" id="new-habit-name" placeholder="新习惯名字" aria-describedby="new-habit-name-desc">
               <span id="new-habit-name-desc" class="sr-only">请输入新习惯名字</span>
             </div>
-            <ul class="list-inline">
+            <ul class="list-inline" id="new-habit-workdays">
               <li class="checkbox">
                 <label>
                   <input type="checkbox" value="1" checked>
