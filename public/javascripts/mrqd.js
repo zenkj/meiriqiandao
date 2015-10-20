@@ -5,6 +5,8 @@ $(document).ready(function() {
     var M = {
         userid: -1,
         username: '签到君',
+        email: '',
+        phone: '',
         version: -1,
         habits: [],
     };
@@ -567,23 +569,23 @@ $(document).ready(function() {
                 updateCheckin($td, date);
             } else {
                 ajax.put('/api/v1/checkins/'+checkinID(T.currentHabit, date),
-                        {version: M.version, checkin: !checkined},
+                        {version: M.version, checkin: checkined ? 0 : 1},
                         function(data) {
                             waitingServerCheckin(T.currentHabit, date, 'remove');
                             if (data.error) {
                                 log('update checkin error: ' + data.msg);
+                                infoDialog('错误', data.msg);
                                 updateCheckins();
                             } else {
                                 if (data.version == M.version + 1) {
                                     // everything is ok
                                     M.version = data.version;
                                     checkin(date, !checkined);
+                                    updateHabit(T.currentHabit);
                                     updateCheckins();
                                 } else {
                                     // someone else has updated elsewhere
-                                    M.version = data.version;
-                                    M.habits = data.habits;
-                                    refreshView();
+                                    refresh();
                                 }
                             }
                         },
@@ -878,6 +880,8 @@ $(document).ready(function() {
 
                 M.userid = data.userid;
                 M.username = data.username;
+                M.phone = data.phone;
+                M.email = data.email;
                 M.version = -1;
 
                 $errmsg.css('display', 'none');
@@ -935,8 +939,8 @@ $(document).ready(function() {
 
                 if (data.version == M.version+1 && data.habit) {
                     M.version += 1;
-                    M.habits.push(data.habit);
-                    M.currentHabit = data.habit;
+                    M.habits.unshift(data.habit);
+                    T.currentHabit = data.habit;
                     updateHabits(true);
                 } else {
                     refresh();
@@ -946,6 +950,97 @@ $(document).ready(function() {
                 $dialog.modal('hide');
                 $dialog.one('hidden.bs.modal', function() {
                     infoDialog('创建失败', err);
+                });
+            });
+        });
+    });
+
+
+    $('#dialog-user-config').on('show.bs.modal', function() {
+        $('#user-config-name').val(M.username);
+        $('#user-config-phone').val(M.phone);
+        $('#user-config-email').val(M.email);
+    });
+
+    $('#button-user-config').each(function() {
+        var hc = new Hammer(this);
+        hc.on('tap', function() {
+            var $dialog = $('#dialog-user-config');
+            var $errmsg = $('.error-message', $dialog);
+            var $name = $('#user-config-name');
+            var $phone = $('#user-config-phone');
+            var $email = $('#user-config-email');
+
+            var name = $.trim($name.val()||'');
+            var phone = $.trim($phone.val()||'');
+            var phone1 = (phone.match(/\d+/g)||[])[0];
+            var email = $.trim($email.val()||'');
+
+            function init() {
+                $errmsg.css('display', 'none');
+                removeCheck($name);
+                removeCheck($phone);
+                removeCheck($email);
+            }
+
+            init();
+
+            if (name.length == 0) {
+                setError($name, '名字不能为空');
+                return;
+            } else {
+                setSuccess($name);
+            }
+
+            if (!phone1 || phone1 != phone || phone1.length != 11) {
+                setError($phone, '手机号格式错误，请输入11个阿拉伯数字');
+                return;
+            } else {
+                setSuccess($phone);
+            }
+
+            if (email.length > 0 && !email.match(/^([\w.-]+)@(.*)(\.\w+)$/)) {
+                setError($email, '邮箱格式错误');
+                return;
+            } else {
+                setSuccess($email);
+            }
+
+            if (name == M.username && phone == M.phone && email == M.email) {
+                init();
+                $dialog.modal('hide');
+                return;
+            }
+
+            ajax.post('/user-config', {
+                version: M.version,
+                name: name,
+                phone: phone,
+                email, email,
+            }, function(data) {
+                if (data.error) {
+                    var ids = {
+                        name: $name,
+                        phone: $phone,
+                        email: $email,
+                    };
+                    setError(ids[data.data] || $name, data.msg);
+                    return;
+                }
+
+                init();
+                $dialog.modal('hide');
+                if (data.uid == M.userid && data.version == M.version+1) {
+                    M.version += 1;
+                    refreshNav();
+                } else {
+                    refresh();
+                }
+            }, function(xhr, err) {
+                init();
+                $dialog.modal('hide');
+                $dialog.one('hidden.bs.modal', function() {
+                    infoDialog('修改失败！',  err);
                 });
             });
         });
@@ -978,14 +1073,18 @@ $(document).ready(function() {
         updateHabits(true);
     }
 
-    // refresh after having gotten the userid and username
-    function refresh() {
+    function refresNav() {
         if (M.userid < 0) {
             $('nav').addClass('no-user');
         } else {
             $('nav').removeClass('no-user');
         }
         $('.user').text(M.username);
+    }
+
+    // refresh after having gotten the userid and username
+    function refresh() {
+        refreshNav();
         ajax.get('/api/v1/checkins', {version: M.version},
                  function(data) {
                     var i;

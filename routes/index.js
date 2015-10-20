@@ -95,7 +95,7 @@ router.post('/login', function(req, res) {
                 req.session.userid = rows[0].id;
                 req.session.username = rows[0].name;
                 req.session.cookie.maxAge = 10*24*60*60*1000;
-                res.json({userid: rows[0].id, username: rows[0].name});
+                res.json({userid: rows[0].id, username: rows[0].name, phone: rows[0].phone||'', email: rows[0].email||''});
             });
         } else {
             res.json({error: true});
@@ -200,7 +200,107 @@ router.post('/signup', function(req, res) {
     });
 });
 
+// @params: {version: 13, name: 'ab', phone: 12345678901, email: 'a@b.c'} 
+// @success return: {uid: 18, version: 14}
+// @error return: {error: true, data:'phone', msg: '...'}
 router.put('/user-config', function(req, res) {
+    var uid = req.session.userid;
+    if (!uid || uid == DEFAULT_UID) {
+        res.json({error: true, msg: '尚未登录，请登录后再修改配置'});
+        return;
+    }
+    var version = +req.body.version;
+    var name = req.body.name || '';
+    var phone = req.body.phone || '';
+    var email = req.body.email || '';
+
+    var phone1 = (phone.match(/\d+/g) || [])[0];
+    if (phone1 != phone || !phone1 || phone1.length != 11) {
+        res.json({error: true, data: 'phone', msg: '手机号格式错误，请输入11个阿拉伯数字'});
+        return;
+    }
+
+    if (email.length > 0 && !email.match(/^([\w.-]+)@(.*)(\.\w+)$/)) {
+        res.json({error: true, data: 'email', msg: '邮箱格式错误'});
+        return;
+    }
+
+    email = email.length > 0 ? email : null;
+
+    if (name.length == 0) {
+        res.json({error: true, data: 'name', msg: '名字不能为空'});
+        return;
+    }
+
+    dbpool.getConnection(function(err, conn) {
+        if (err) {
+            console.log('get connection failed: ' + err);
+            ierr(res);
+            return;
+        }
+        conn.beginTransaction(function(err) {
+            if (err) {
+                console.log('begin transition failed: ' + err);
+                conn.release();
+                ierr(res);
+                return;
+            }
+            conn.query('update users set name=?, phone=?, email=? where id=?', [name, phone, email, uid], function(err, rows) {
+                if (err) {
+                    var data = 'name';
+                    var msg = '服务器内部错误，请联系管理员';
+                    if (err.code == 'ER_DUP_ENTRY') {
+                        if (err.message.indexOf("key 'email'") >= 0) {
+                            data = 'email';
+                            msg = '邮箱地址已经使用，请使用其他邮箱';
+                        } else {
+                            data = 'phone';
+                            msg = '手机号已经使用，请使用其他手机号';
+                        }
+                    }
+                    conn.rollback(function() {
+                        conn.release();
+                    });
+                    console.log('error: ' + err.message);
+                    res.json({error: true, data: data, msg: msg});
+                    return;
+                }
+                conn.query('update versions set version = version+1 where uid=?', [uid], function(err, rows) {
+                    if (err) {
+                        conn.rollback(function() {
+                            conn.release();
+                        });
+                        console.log('error: ' + err.message);
+                        ierr(res);
+                        return;
+                    }
+                    conn.commit(function(err) {
+                        if (err) {
+                            conn.rollback(function() {
+                                conn.release();
+                            });
+                            console.log('error: ' + err.message);
+                            ierr(res);
+                            return;
+                        }
+
+                        conn.query('select version from versions where uid = ?', [uid], function(err, result) {
+                            conn.release();
+                            if (err || result.length == 0) {
+                                console.log('select version for uid ' + uid + ' failed.');
+                                // use version + 2 to trigger client refresh
+                                res.json({uid: uid, version: version+2});
+                                return;
+                            }
+                            version = result[0].version;
+                            console.log('signup success for user ' + userid);
+                            res.json({uid: uid, version, version});
+                        });
+                    });
+                });
+            });
+        });
+    });
 });
 
 
@@ -325,12 +425,106 @@ router.delete('/api/v1/habits/:hid', function(req, res) {
 });
 
 
-// {version: 12, checkin: true/false}
+// @param: {version: 12, checkin: 1/0}
+// @success return: {version: 13}
+// @error return: {error: true, msg: 'xxx'}
 router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
-  var data = {
-    version: 13,
-  };
-  res.json(data);
+    var uid = req.session.userid;
+
+    if (!uid) {
+        console.log('error: checkin before login....');
+        ierr(res, '尚未登录，请登录后再签到');
+        return;
+    }
+
+    var chid = req.params.hid_yyyy_mm_dd || '';
+    var version = req.body.version;
+    var checkin = req.body.checkin;
+    var r = chid.replace('-', ' ').match(/\S+/g);
+    var hid, date;
+    if (r && r.length == 2) {
+        hid = +r[0];
+        date = new Date(r[1]);
+    } else {
+        console.log('error: invalid checkin id: ' + chid);
+        ierr(res, '请求url出错');
+        return;
+    }
+
+    if (typeof version == 'undefined') {
+        console.log('error: parameter error, version = ' + version);
+        ierr(res, '请求参数出错');
+        return;
+    }
+
+    checkin = !!+checkin;
+
+    version = +version;
+
+    var y = date.getFullYear();
+    var m = date.getMonth() + 1;
+    var d = date.getDate() - 1;
+
+    var field = 'm' + m;
+
+    dbpool.getConnection(function(err, conn) {
+        if (err) {
+            console.log('get connection failed: ' + err);
+            ierr(res);
+            return;
+        }
+        conn.beginTransaction(function(err) {
+            if (err) {
+                console.log('begin transition failed: ' + err);
+                conn.release();
+                ierr(res);  
+                return;
+            }
+            var sql = 'insert into checkins(hid, year, '+field+') values(' +hid+','+y+','+(1<<d)+') '+
+                      'on duplicate key update '+field+'='+field+'|(1<<'+d+')';
+            if (!checkin) {
+                sql = 'insert into checkins(hid, year, '+field+') values('+hid+','+y+',0) '+
+                      'on duplicate key update '+field+'='+field+'&(~(1<<'+d+'))';
+            }
+
+            console.log('sql: ' + sql);
+            conn.query(sql, function(err, result) {
+                if (err) {
+                    console.log('update checkin failed: ' + sql);
+                    conn.rollback(function() { conn.release(); });
+                    ierr(res);
+                    return;
+                }
+                conn.query('update versions set version = version+1 where uid=?', [uid], function(err, result) {
+                    if (err) {
+                        console.log('update version for uid '+uid+ ' failed');
+                        conn.rollback(function() {conn.release();});
+                        ierr(res);
+                        return;
+                    }
+                    conn.commit(function(err) {
+                        if (err) {
+                            console.log('commit transition faialed');
+                            conn.rollback(function() {conn.release();});
+                            ierr(res);
+                            return;
+                
+                        }
+                        conn.query('select version from versions where uid=?', [uid], function(err, result) {
+                            conn.release();
+                            if (err || result.length == 0) {
+                                console.log('select version for uid ' + uid + ' failed.');
+                                // use version + 2 to trigger client refresh
+                                res.json({version: version+2});
+                                return;
+                            }
+                            res.json({version: result[0].version});
+                        });
+                    });
+                });
+            });
+        });
+    });
 });
 
 router.get('/api/v1/checkins', function(req, res) {

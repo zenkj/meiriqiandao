@@ -38,7 +38,7 @@ create table if not exists habits (id bigint not null auto_increment,
                      name varchar(255) not null,
                      flag bigint unsigned not null,
                      primary key (id),
-                     unique key (name));
+                     unique key (uid, name));
 
 insert into habits values (-1, -1, '每天跑步5公里',    1<<1|1<<2|1<<3|1<<4|1<<5),
                           (-2, -1, '晚上11点前睡觉',   1<<1|1<<2|1<<3|1<<4|1<<5|1<<7),

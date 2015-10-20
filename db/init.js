@@ -7,7 +7,7 @@ var conn = db.createConnection({
     database: 'mrqd',
 });
 
-conn.query("insert into users(name, phone, email, password) values('abc', '111', 'aaaa', 'ppp')", function(err, rows) {
+conn.query("update users set name='aaa',phone='18666292624',email=null where id=1", function(err, rows) {
     if (err) {
         console.log(err);
         conn.end();
