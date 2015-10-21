@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 var hash = require('./hash');
 var mysql = require('mysql');
+var async = require('async');
 
 var dbpool = mysql.createPool({
     connectionLimit: 10,
@@ -138,6 +139,86 @@ router.post('/signup', function(req, res) {
 
     password = hash.hash(password);
 
+    async.waterfall([
+        function(cb) {
+            dbpool.getConnection(function(err, conn) {
+                if (err) {
+                    console.log('get connection failed: ' + err);
+                    ierr(res);
+                    return cb(err);
+                }
+                cb(null, conn);
+            });
+        },
+        function(conn, cb) {
+            conn.beginTransaction(function(err) {
+                if (err) {
+                    console.log('begin transition failed: ' + err);
+                    conn.release();
+                    ierr(res);
+                    return cb(err);
+                }
+                cb(null, conn);
+            });
+        },
+        function(conn, cb) {
+            conn.query('insert into users(email, phone, password, name) values(?,?,?,?)', [email, phone, password, name], function(err, rows) {
+                if (err) {
+                    var data = 'name';
+                    var msg = '服务器内部错误，请联系管理员';
+                    if (err.code == 'ER_DUP_ENTRY') {
+                        if (err.message.indexOf("key 'email'") >= 0) {
+                            data = 'email';
+                            msg = '邮箱地址已经使用，请使用其他邮箱';
+                        } else {
+                            data = 'phone';
+                            msg = '手机号已经使用，请使用其他手机号';
+                        }
+                    }
+                    conn.rollback(function() {
+                        conn.release();
+                    });
+                    console.log('error: ' + err.message);
+                    res.json({error: true, data: data, msg: msg});
+                    return cb(err);
+                }
+                var userid = rows.insertId;
+                cb(null, conn, userid);
+            });
+        },
+        function(conn, userid, cb) {
+            conn.query('insert into versions values(?,?)', [userid, 0], function(err, rows) {
+                if (err) {
+                    conn.rollback(function() {
+                        conn.release();
+                    });
+                    console.log('error: ' + err.message);
+                    ierr(res);
+                    return cb(err);
+                }
+                cb(null, conn, userid);
+            });
+        },
+
+        function(conn, userid, cb) {
+            conn.commit(function(err) {
+                if (err) {
+                    conn.rollback(function() {
+                        conn.release();
+                    });
+                    console.log('error: ' + err.message);
+                    ierr(res);
+                    return cb(err);
+                }
+                conn.release();
+                console.log('signup success for user ' + userid);
+                res.json({uid: userid});
+                cb(null);
+            });
+        },
+
+    ]);
+/*
     dbpool.getConnection(function(err, conn) {
         if (err) {
             console.log('get connection failed: ' + err);
@@ -198,6 +279,7 @@ router.post('/signup', function(req, res) {
             });
         });
     });
+*/
 });
 
 // @params: {version: 13, name: 'ab', phone: 12345678901, email: 'a@b.c'} 
@@ -232,12 +314,92 @@ router.put('/user-config', function(req, res) {
         return;
     }
 
+    async.waterfall([
+        function(cb) {
+            dbpool.getConnection(function(err, conn) {
+                if (err) {
+                    console.log('get connection failed: ' + err);
+                    ierr(res);
+                    return cb(err);
+                }
+                cb(null, conn);
+            });
+        },
+
+
+        function(conn, cb) {
+            conn.query('update users set name=?, phone=?, email=? where id=?', [name, phone, email, uid], function(err, rows) {
+                if (err) {
+                    var data = 'name';
+                    var msg = '服务器内部错误，请联系管理员';
+                    if (err.code == 'ER_DUP_ENTRY') {
+                        if (err.message.indexOf("key 'email'") >= 0) {
+                            data = 'email';
+                            msg = '邮箱地址已经使用，请使用其他邮箱';
+                        } else {
+                            data = 'phone';
+                            msg = '手机号已经使用，请使用其他手机号';
+                        }
+                    }
+                    conn.rollback(function() {
+                        conn.release();
+                    });
+                    console.log('error: ' + err.message);
+                    res.json({error: true, data: data, msg: msg});
+                    return cb(err);
+                }
+                cb(null, conn);
+            };
+        },
+
+
+        function(conn, cb) {
+            conn.query('update versions set version = version+1 where uid=?', [uid], function(err, rows) {
+                if (err) {
+                    conn.rollback(function() {
+                        conn.release();
+                    });
+                    console.log('error: ' + err.message);
+                    ierr(res);
+                    return cb(err);
+                }
+                cb(null, conn);
+            });
+        },
+
+
+        function(conn, cb) {
+            conn.commit(function(err) {
+                if (err) {
+                    conn.rollback(function() {
+                        conn.release();
+                    });
+                    console.log('error: ' + err.message);
+                    ierr(res);
+                    return cb(err);
+                }
+                cb(null, conn);
+            });
+        },
+
+
+        function(conn, cb) {
+            conn.query('select version from versions where uid = ?', [uid], function(err, result) {
+                conn.release();
+                if (err || result.length == 0) {
+                    console.log('select version for uid ' + uid + ' failed.');
+                    // use version + 2 to trigger client refresh
+                    res.json({uid: uid, version: version+2});
+                    return;
+                }
+                version = result[0].version;
+                console.log('signup success for user ' + userid);
+                res.json({uid: uid, version: version});
+            });
+        },
+    ]);
+/*
     dbpool.getConnection(function(err, conn) {
-        if (err) {
-            console.log('get connection failed: ' + err);
-            ierr(res);
-            return;
-        }
         conn.beginTransaction(function(err) {
             if (err) {
                 console.log('begin transition failed: ' + err);
@@ -294,13 +456,14 @@ router.put('/user-config', function(req, res) {
                             }
                             version = result[0].version;
                             console.log('signup success for user ' + userid);
-                            res.json({uid: uid, version, version});
+                            res.json({uid: uid, version: version});
                         });
                     });
                 });
             });
         });
     });
+*/
 });
 
 
@@ -329,6 +492,67 @@ router.post('/api/v1/habits', function(req, res) {
 
     flag |= workday;
 
+    async.waterfall([
+        function(cb) {
+            dbpool.getConnection(function(err, conn) {
+                if (err) {
+                    console.log('get connection failed: ' + err);
+                    ierr(res);
+                    return cb(err); 
+                }
+
+                cb(null, conn);
+            });
+        },
+
+
+        function(conn, cb) {
+            conn.beginTransaction(function(err) {
+                if (err) {
+                    console.log('begin transition failed: ' + err);
+                    conn.release();
+                    ierr(res);  
+                    return cb(err);
+                }
+                cb(null, conn);
+        },
+
+
+        function(conn, cb) {
+            conn.query('insert into habits(uid,name,flag) values(?,?,?)',
+                [uid, name, flag], function(err, result) {
+                    if (err) {
+                        var msg = '服务器内部错误，请联系管理员';
+                        if (err.code == 'ER_DUP_ENTRY') {
+                            msg = '该习惯已经存在，请使用其他名称创建';
+                        }
+                        console.log('error: ' + err.message);
+                        conn.rollback(function() {
+                            conn.release();
+                        });
+                        ierr(res, msg);
+                        return cb(err);
+                    }
+
+                    var hid = result.insertId;
+                    cb(null, conn, hid);
+            });
+        },
+
+        function(conn, hid, cb) {
+            conn.query('update versions set version = version + 1 where uid = ?',
+                [uid], function(err, result) {
+                    if (err) {
+                        console.log('update version failed for uid ' + uid);
+                        conn.rollback(function() {conn.release();});
+                        ierr(res);
+                        return cb(err);
+                    }
+                    cb(null, conn);
+            });
+        },
+
+    ]);
     dbpool.getConnection(function(err, conn) {
         if (err) {
             console.log('get connection failed: ' + err);
@@ -529,10 +753,8 @@ router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
 
 router.get('/api/v1/checkins', function(req, res) {
     var uid = req.session.userid || DEFAULT_UID;
-    var uname = req.session.username || DEFAULT_UNAME;
     var data = {
         uid: uid,
-        uname: uname,
         habits: [],
     };
     var habits = {};

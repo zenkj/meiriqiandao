@@ -1073,7 +1073,7 @@ $(document).ready(function() {
         updateHabits(true);
     }
 
-    function refresNav() {
+    function refreshNav() {
         if (M.userid < 0) {
             $('nav').addClass('no-user');
         } else {
@@ -1098,7 +1098,6 @@ $(document).ready(function() {
                         return;
                     }
                     M.userid = data.uid;
-                    M.username = data.uname;
                     M.version = data.version;
                     M.habits = data.habits;
                     refreshView();
