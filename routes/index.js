@@ -27,10 +27,10 @@ router.get('/', function(req, res, next) {
     };
 
     var uid = -1;
-    if (typeof req.session.uid == 'undefined') {
-        req.session.uid = DEFAULT_UID;
+    if (typeof req.session.userid == 'undefined') {
+        req.session.userid = DEFAULT_UID;
     } else {
-        uid = +req.session.uid;
+        uid = +req.session.userid;
     }
 
     dbpool.query('select * from users where id = ?', [uid], function(err, rows, fields) {
@@ -45,6 +45,9 @@ router.get('/', function(req, res, next) {
         } else {
             data.user.id = uid;
             data.user.name = rows[0].name;
+            req.session.username = row[0].name;
+            req.session.phone = row[0].phone;
+            req.session.email = row[0].email;
         }
         res.render('index', data);
     });
@@ -95,6 +98,8 @@ router.post('/login', function(req, res) {
             req.session.regenerate(function(err) {
                 req.session.userid = rows[0].id;
                 req.session.username = rows[0].name;
+                req.session.phone = rows[0].phone;
+                req.session.email = rows[0].email;
                 req.session.cookie.maxAge = 10*24*60*60*1000;
                 res.json({userid: rows[0].id, username: rows[0].name, phone: rows[0].phone||'', email: rows[0].email||''});
             });
@@ -216,70 +221,7 @@ router.post('/signup', function(req, res) {
                 cb(null);
             });
         },
-
     ]);
-/*
-    dbpool.getConnection(function(err, conn) {
-        if (err) {
-            console.log('get connection failed: ' + err);
-            ierr(res);
-            return;
-        }
-        conn.beginTransaction(function(err) {
-            if (err) {
-                console.log('begin transition failed: ' + err);
-                conn.release();
-                ierr(res);
-                return;
-            }
-            conn.query('insert into users(email, phone, password, name) values(?,?,?,?)', [email, phone, password, name], function(err, rows) {
-                if (err) {
-                    var data = 'name';
-                    var msg = '服务器内部错误，请联系管理员';
-                    if (err.code == 'ER_DUP_ENTRY') {
-                        if (err.message.indexOf("key 'email'") >= 0) {
-                            data = 'email';
-                            msg = '邮箱地址已经使用，请使用其他邮箱';
-                        } else {
-                            data = 'phone';
-                            msg = '手机号已经使用，请使用其他手机号';
-                        }
-                    }
-                    conn.rollback(function() {
-                        conn.release();
-                    });
-                    console.log('error: ' + err.message);
-                    res.json({error: true, data: data, msg: msg});
-                    return;
-                }
-                var userid = rows.insertId;
-                conn.query('insert into versions values(?,?)', [userid, 0], function(err, rows) {
-                    if (err) {
-                        conn.rollback(function() {
-                            conn.release();
-                        });
-                        console.log('error: ' + err.message);
-                        ierr(res);
-                        return;
-                    }
-                    conn.commit(function(err) {
-                        if (err) {
-                            conn.rollback(function() {
-                                conn.release();
-                            });
-                            console.log('error: ' + err.message);
-                            ierr(res);
-                            return;
-                        }
-                        conn.release();
-                        console.log('signup success for user ' + userid);
-                        res.json({uid: userid});
-                    });
-                });
-            });
-        });
-    });
-*/
 });
 
 // @params: {version: 13, name: 'ab', phone: 12345678901, email: 'a@b.c'} 
@@ -378,6 +320,9 @@ router.put('/user-config', function(req, res) {
                     ierr(res);
                     return cb(err);
                 }
+                req.session.username = name;
+                req.session.phone = phone;
+                req.session.email = email;
                 cb(null, conn);
             });
         },
@@ -398,72 +343,6 @@ router.put('/user-config', function(req, res) {
             });
         },
     ]);
-/*
-    dbpool.getConnection(function(err, conn) {
-        conn.beginTransaction(function(err) {
-            if (err) {
-                console.log('begin transition failed: ' + err);
-                conn.release();
-                ierr(res);
-                return;
-            }
-            conn.query('update users set name=?, phone=?, email=? where id=?', [name, phone, email, uid], function(err, rows) {
-                if (err) {
-                    var data = 'name';
-                    var msg = '服务器内部错误，请联系管理员';
-                    if (err.code == 'ER_DUP_ENTRY') {
-                        if (err.message.indexOf("key 'email'") >= 0) {
-                            data = 'email';
-                            msg = '邮箱地址已经使用，请使用其他邮箱';
-                        } else {
-                            data = 'phone';
-                            msg = '手机号已经使用，请使用其他手机号';
-                        }
-                    }
-                    conn.rollback(function() {
-                        conn.release();
-                    });
-                    console.log('error: ' + err.message);
-                    res.json({error: true, data: data, msg: msg});
-                    return;
-                }
-                conn.query('update versions set version = version+1 where uid=?', [uid], function(err, rows) {
-                    if (err) {
-                        conn.rollback(function() {
-                            conn.release();
-                        });
-                        console.log('error: ' + err.message);
-                        ierr(res);
-                        return;
-                    }
-                    conn.commit(function(err) {
-                        if (err) {
-                            conn.rollback(function() {
-                                conn.release();
-                            });
-                            console.log('error: ' + err.message);
-                            ierr(res);
-                            return;
-                        }
-
-                        conn.query('select version from versions where uid = ?', [uid], function(err, result) {
-                            conn.release();
-                            if (err || result.length == 0) {
-                                console.log('select version for uid ' + uid + ' failed.');
-                                // use version + 2 to trigger client refresh
-                                res.json({uid: uid, version: version+2});
-                                return;
-                            }
-                            version = result[0].version;
-                            console.log('signup success for user ' + userid);
-                            res.json({uid: uid, version: version});
-                        });
-                    });
-                });
-            });
-        });
-    });
-*/
 });
 
 
@@ -515,6 +394,7 @@ router.post('/api/v1/habits', function(req, res) {
                     return cb(err);
                 }
                 cb(null, conn);
+            });
         },
 
 
@@ -534,12 +414,11 @@ router.post('/api/v1/habits', function(req, res) {
                         return cb(err);
                     }
 
-                    var hid = result.insertId;
-                    cb(null, conn, hid);
+                    cb(null, conn);
             });
         },
 
-        function(conn, hid, cb) {
+        function(conn, cb) {
             conn.query('update versions set version = version + 1 where uid = ?',
                 [uid], function(err, result) {
                     if (err) {
@@ -552,7 +431,42 @@ router.post('/api/v1/habits', function(req, res) {
             });
         },
 
+        function(conn, cb) {
+            conn.commit(function(err) {
+                if (err) {
+                    console.log('commit transition faialed');
+                    conn.rollback(function() {conn.release();});
+                    ierr(res);
+                    return cb(err);
+                }
+                cb(null, conn);
+            });
+        },
+
+        function (conn, cb) {
+            conn.query('select version from versions where uid = ?',
+                [uid], function(err, result) {
+
+                    conn.release();
+
+                    if (err || result.length == 0) {
+                        console.log('select version for uid ' + uid + ' failed.');
+                        // use version + 2 to trigger client refresh
+                        res.json({version: version+2});
+                        return;
+                    }
+                    version = result[0].version;
+                    res.json({version: version,
+                            habit: {
+                                id: hid,
+                                name: name,
+                                workday: workday,
+                                checkins:{}
+                            }});
+                });
+        },
     ]);
+            /*
     dbpool.getConnection(function(err, conn) {
         if (err) {
             console.log('get connection failed: ' + err);
@@ -623,6 +537,7 @@ router.post('/api/v1/habits', function(req, res) {
                 });
         });
     });
+    */
 
 });
 
@@ -837,9 +752,10 @@ router.get('/api/v1/checkins', function(req, res) {
 
 router.get('/api/v1/whoami', function(req, res) {
     var data = {
-        id: 0,
-        name: '签到君',
-        description: '签到小助手',
+        id: req.session.userid || -1,
+        name: req.session.username || '签到君',
+        phone: req.session.phone || '',
+        email: req.session.email || '',
     };
 
     res.json(data);
