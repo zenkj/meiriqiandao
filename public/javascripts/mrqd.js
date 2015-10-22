@@ -10,7 +10,7 @@ $(document).ready(function() {
         activeHabitCount: 0,
         inactiveHabitCount: 0,
         version: -1,
-        habits: [],
+        activeHabits: {},
     };
     var MAX_ACTIVE_HABITS = 5;
 
@@ -171,13 +171,13 @@ $(document).ready(function() {
     // @param refresh: true: the model is changed, recreate related dom object
     //                 false: the model is not changed, reuse the dom object
     function updateHabits(refresh) {
-        var i, habit, $habit;
+        var hid, habit, $habit;
         $list = $('#habit-list');
 
         if (refresh) $list.empty();
 
-        for (i=0; i<M.habits.length; i++) {
-            habit = M.habits[i];
+        for (hid in M.activeHabits) {
+            habit = M.activeHabits[hid];
             if (refresh) {
                 $habit = $('<li></li>');
                 $habit.data('model', habit);
@@ -232,11 +232,7 @@ $(document).ready(function() {
         var r = chid.replace('-', ' ').match(/\S+/g);
         if (r && r.length == 2) {
             var hid = +r[0];
-            for (var i=0; i<M.habits.length; i++) {
-                if (M.habits[i].id == hid) {
-                    return M.habits[i];
-                }
-            }
+            return M.activeHabits[hid];
         }
         return null;
     }
@@ -538,7 +534,7 @@ $(document).ready(function() {
         });
 
         function toggleCheckin(e) {
-            if (M.habits.length == 0) {
+            if (M.activeHabitCount == 0) {
                 infoDialog('提醒', '请先创建一个习惯');
                 return;
             }
@@ -902,60 +898,65 @@ $(document).ready(function() {
     });
 
 
-    $('#button-new-habit').each(function() {
-        var hc = new Hammer(this);
-        hc.on('tap', function() {
-            var $dialog = $('#dialog-new-habit');
-            var $name = $('#new-habit-name');
-            var $workdays = $('#new-habit-workdays input:checked');
-            var $errmsg = $('.error-message', $dialog);
-            var name = $.trim($name.val() || '');
-            var workdays = 0;
+    $('#button-new-habit').click(function() {
+        var $dialog = $('#dialog-new-habit');
+        var $name = $('#new-habit-name');
+        var $workdays = $('#new-habit-workdays input:checked');
+        var $errmsg = $('.error-message', $dialog);
+        var name = $.trim($name.val() || '');
+        var workdays = 0;
 
-            function init() {
-                $errmsg.css('display', 'none');
-                removeCheck($name);
-            }
-            init();
+        function init() {
+            $errmsg.css('display', 'none');
+            removeCheck($name);
+        }
+        init();
 
-            if (name.length == 0) {
-                setError($name, '习惯名字不能为空！');
+        if (name.length == 0) {
+            setError($name, '习惯名字不能为空！');
+            return;
+        }
+
+        $workdays.each(function() {
+            var wd = +$(this).val();
+            if (wd>=1 && wd<=7)
+                workdays |= (1<<wd);
+        });
+
+        ajax.post('/api/v1/habits', {
+            version: M.version,
+            name: name,
+            workday: workdays
+        }, function(data) {
+            if (data.error) {
+                setError($name, data.msg);
                 return;
             }
 
-            $workdays.each(function() {
-                var wd = +$(this).val();
-                if (wd>=1 && wd<=7)
-                    workdays |= (1<<wd);
-            });
+            init();
+            $dialog.modal('hide');
 
-            ajax.post('/api/v1/habits', {
-                version: M.version,
-                name: name,
-                workday: workdays
-            }, function(data) {
-                if (data.error) {
-                    setError($name, data.msg);
-                    return;
-                }
+            if (!data.habit.enable) {
+                infoDialog('当前激活的习惯过多，新创建的习惯处于未激活状态。请先禁用一个激活的习惯，再启用该习惯');
+            }
 
-                init();
-                $dialog.modal('hide');
-
-                if (data.version == M.version+1 && data.habit) {
-                    M.version += 1;
-                    M.habits.unshift(data.habit);
+            if (data.version == M.version+1) {
+                M.version += 1;
+                if (data.habit.enable) {
+                    M.activeHabits[data.habit.id] = data.habit;
                     T.currentHabit = data.habit;
                     updateHabits(true);
-                } else {
-                    refresh();
+                } else if (M.inactiveHabits) {
+                    M.inactiveHabits[data.habit.id] = data.habit;
                 }
-            }, function(xhr, err) {
-                init();
-                $dialog.modal('hide');
-                $dialog.one('hidden.bs.modal', function() {
-                    infoDialog('创建失败', err);
-                });
+            } else {
+                refresh();
+            }
+        }, function(xhr, err) {
+            init();
+            $dialog.modal('hide');
+            $dialog.one('hidden.bs.modal', function() {
+                infoDialog('创建失败', err);
             });
         });
     });

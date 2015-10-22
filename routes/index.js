@@ -510,17 +510,19 @@ router.post('/api/v1/habits', function(req, res) {
                 if (err || result.length == 0) {
                     log.log('select version for uid ' + uid + ' failed.');
                     // use version + 2 to trigger client refresh
-                    res.json({version: version+2});
-                    return;
+                    version += 2;
+                } else {
+                    version = result[0].version;
                 }
-                version = result[0].version;
                 res.json({version: version,
                         habit: {
                             id: hid,
                             name: name,
                             workday: workday,
+                            enable: enable,
                             checkins:{}
                         }});
+                cb();
             });
         },
     ]);
