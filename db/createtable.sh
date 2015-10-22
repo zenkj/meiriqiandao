@@ -1,3 +1,3 @@
 #!/bin/sh
 
-mysql -umrqd -p <init.sql
+mysql -umrqd -pmrqd123 mrqd <init.sql
