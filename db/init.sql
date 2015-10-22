@@ -49,6 +49,7 @@ insert into habits values (-1, -1, '每天跑步5公里',    1|1<<1|1<<2|1<<3|1<
 drop table if exists checkins;
 create table if not exists checkins (hid bigint not null,
                  year int not null,
+                 uid int not null,
                  m1 int unsigned not null,
                  m2 int unsigned not null,
                  m3 int unsigned not null,
