@@ -104,6 +104,7 @@ router.post('/login', function(req, res) {
                 } else {
                     cb('err');
                 }
+            });
         },
 
         function(data, cb) {
