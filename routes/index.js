@@ -15,6 +15,7 @@ var dbpool = mysql.createPool({
 
 var DEFAULT_UID = -1;
 var DEFAULT_UNAME = '签到君';
+var MAX_ACTIVE_HABITS = 5;
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -58,7 +59,7 @@ router.get('/', function(req, res, next) {
 // @success return: {userid: -1, username: '签到君'}
 router.post('/logout', function(req, res) {
     req.session.destroy(function(err) {
-        res.json({userid: DEFAULT_UID, username: DEFAULT_UNAME});
+        res.json({userid: DEFAULT_UID, username: DEFAULT_UNAME, phone:'', email:''});
     });
 });
 
@@ -118,9 +119,9 @@ router.post('/login', function(req, res) {
 
                     for (var i=0; i<result.length; i++) {
                         if (result[i].enabled == 0)
-                            data.inactiveHabits = result[i].count;
+                            data.inactiveHabitCount = result[i].count;
                         else if (result[i].enabled == 1)
-                            data.activeHabits = result[i].count;
+                            data.activeHabitCount = result[i].count;
                     }
                     cb(null, data);
                 });
@@ -132,6 +133,8 @@ router.post('/login', function(req, res) {
         req.session.username = data.username;
         req.session.phone = data.phone;
         req.session.email = data.email;
+        req.session.activeHabitCount = data.activeHabitCount;
+        req.session.inactiveHabitCount = data.inactiveHabitCount;
         req.session.cookie.maxAge = 10*24*60*60*1000;
         res.json(result);
     });
@@ -386,7 +389,7 @@ function ierr(res, msg) {
 }
 
 // @params: {version: 12, name: 'abc', workday: 120} 
-// @success return: {version: 13, habit: {id:12, name:'abc', workday: 120}}
+// @success return: {version: 13, habit: {id:12, name:'abc', workday: 120, enable: 1/0}}
 // @error return: {error: true, msg: '...'}
 router.post('/api/v1/habits', function(req, res) {
     var uid = req.session.userid;
@@ -397,14 +400,21 @@ router.post('/api/v1/habits', function(req, res) {
     var version = +req.body.version;
     var name = req.body.name;
     var workday = ((+req.body.workday) & 0xFE);
-    var flag = 1; // new habit is always active
+
+    var enable = 1;
+
+    if (req.session.activeHabitCount >= MAX_ACTIVE_HABITS) {
+        console.log('warning: new created habit is forced to be inactive');
+        enable = 0;
+    }
+
+    var flag = enable | workday;;
 
     if (name.length == 0) {
         ierr(res, '名字不合法');
         return;
     }
 
-    flag |= workday;
 
     async.waterfall([
         function(cb) {
@@ -478,7 +488,14 @@ router.post('/api/v1/habits', function(req, res) {
                     ierr(res);
                     return cb(err);
                 }
-                req.session.activeHabits ++;
+
+                if (enable) {
+                    req.session.activeHabitCount ++;
+                    req.session.activeHabits[hid] = true;
+                } else {
+                    req.session.inactiveHabitCount ++;
+                }
+
                 cb(null, conn, hid);
             });
         },
@@ -518,7 +535,7 @@ router.put('/api/v1/habits/:hid', function(req, res) {
         return ierr(res, '尚未登录，请登录后再修改习惯');
     }
 
-    var hid, version, name, workday, enable;
+    var hid, version, name, workday, enable, changeEnable;
 
     if (typeof req.params.hid == 'undefined' || +req.params.hid <= 0) {
         log.log('hid invalid: ' + req.params.hid);
@@ -556,8 +573,22 @@ router.put('/api/v1/habits/:hid', function(req, res) {
 
     if (typeof req.body.enable != 'undefined') {
         enable = ((+req.body.enable) & 1);
-        sets.push('flag = (flag & (~1)) | ?');
-        vals.push(enable);
+        changeEnable = false;
+        if (enable && !req.session.activeHabits[hid]) {
+            if (req.session.activeHabitCount >= MAX_ACTIVE_HABITS) {
+                log.log("error: can't enable more than 5 habits");
+                return ierr(res, '最多只能有5个激活的习惯');
+            }
+            changeEnable = true;
+        }
+        if (!enable && req.session.activeHabits[hid]) {
+            changeEnable = true;
+        }
+
+        if (changeEnable) {
+            sets.push('flag = (flag & (~1)) | ?');
+            vals.push(enable);
+        }
     }
 
     if (sets.length == 0) {
@@ -635,6 +666,16 @@ router.put('/api/v1/habits/:hid', function(req, res) {
                     conn.rollback(function() {conn.release();});
                     ierr(res);
                     return cb(err);
+                }
+                if (changeEnable && enable) {
+                    req.session.activeHabitCount ++;
+                    req.session.inactiveHabitCount --;
+                    req.session.activeHabits[hid] = true;
+                }
+                if (changeEnable && !enable) {
+                    req.session.activeHabitCount --;
+                    req.session.inactiveHabitCount ++;
+                    req.session.activeHabits[hid] = false;
                 }
                 cb(null, conn);
             });
@@ -849,6 +890,8 @@ router.get('/api/v1/checkins', function(req, res) {
                     return finalcb();
                 }
 
+                req.session.activeHabits = {};
+
                 for (var i=0; i<rows.length; i++) {
                     var id = rows[i].id;
                     var name = rows[i].name;
@@ -860,6 +903,7 @@ router.get('/api/v1/checkins', function(req, res) {
                         workday: workday,
                         checkins: {},
                     };
+                    req.session.activeHabits[id] = true;
                 }
 
                 cb();
@@ -909,8 +953,8 @@ router.get('/api/v1/whoami', function(req, res) {
         name: req.session.username || '签到君',
         phone: req.session.phone || '',
         email: req.session.email || '',
-        activeHabits: 0,
-        inactiveHabits: 0,
+        activeHabitCount: 0,
+        inactiveHabitCount: 0,
     };
 
     dbpool.query('select flag%2 as enabled, count(*) as count from habits where uid = ? group by enabled',
@@ -922,9 +966,9 @@ router.get('/api/v1/whoami', function(req, res) {
 
             for (var i=0; i<result.length; i++) {
                 if (result[i].enabled == 0)
-                    data.inactiveHabits = result[i].count;
+                    data.inactiveHabitCount = result[i].count;
                 else if (result[i].enabled == 1)
-                    data.activeHabits = result[i].count;
+                    data.activeHabitCount = result[i].count;
             }
 
             res.json(data);

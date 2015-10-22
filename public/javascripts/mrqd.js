@@ -7,9 +7,12 @@ $(document).ready(function() {
         username: '签到君',
         email: '',
         phone: '',
+        activeHabitCount: 0,
+        inactiveHabitCount: 0,
         version: -1,
         habits: [],
     };
+    var MAX_ACTIVE_HABITS = 5;
 
     // temporary data
     var T = {
@@ -882,6 +885,8 @@ $(document).ready(function() {
                 M.username = data.username;
                 M.phone = data.phone;
                 M.email = data.email;
+                M.activeHabitCount = data.activeHavitCount;
+                M.inactiveHabitCount = data.inactiveHabitCount;
                 M.version = -1;
 
                 $errmsg.css('display', 'none');
@@ -962,86 +967,83 @@ $(document).ready(function() {
         $('#user-config-email').val(M.email);
     });
 
-    $('#button-user-config').each(function() {
-        var hc = new Hammer(this);
-        hc.on('tap', function() {
-            var $dialog = $('#dialog-user-config');
-            var $errmsg = $('.error-message', $dialog);
-            var $name = $('#user-config-name');
-            var $phone = $('#user-config-phone');
-            var $email = $('#user-config-email');
+    $('#button-user-config').click(function() {
+        var $dialog = $('#dialog-user-config');
+        var $errmsg = $('.error-message', $dialog);
+        var $name = $('#user-config-name');
+        var $phone = $('#user-config-phone');
+        var $email = $('#user-config-email');
 
-            var name = $.trim($name.val()||'');
-            var phone = $.trim($phone.val()||'');
-            var phone1 = (phone.match(/\d+/g)||[])[0];
-            var email = $.trim($email.val()||'');
+        var name = $.trim($name.val()||'');
+        var phone = $.trim($phone.val()||'');
+        var phone1 = (phone.match(/\d+/g)||[])[0];
+        var email = $.trim($email.val()||'');
 
-            function init() {
-                $errmsg.css('display', 'none');
-                removeCheck($name);
-                removeCheck($phone);
-                removeCheck($email);
+        function init() {
+            $errmsg.css('display', 'none');
+            removeCheck($name);
+            removeCheck($phone);
+            removeCheck($email);
+        }
+
+        init();
+
+        if (name.length == 0) {
+            setError($name, '名字不能为空');
+            return;
+        } else {
+            setSuccess($name);
+        }
+
+        if (!phone1 || phone1 != phone || phone1.length != 11) {
+            setError($phone, '手机号格式错误，请输入11个阿拉伯数字');
+            return;
+        } else {
+            setSuccess($phone);
+        }
+
+        if (email.length > 0 && !email.match(/^([\w.-]+)@(.*)(\.\w+)$/)) {
+            setError($email, '邮箱格式错误');
+            return;
+        } else {
+            setSuccess($email);
+        }
+
+        if (name == M.username && phone == M.phone && email == M.email) {
+            init();
+            $dialog.modal('hide');
+            return;
+        }
+
+        ajax.post('/user-config', {
+            version: M.version,
+            name: name,
+            phone: phone,
+            email, email,
+        }, function(data) {
+            if (data.error) {
+                var ids = {
+                    name: $name,
+                    phone: $phone,
+                    email: $email,
+                };
+                setError(ids[data.data] || $name, data.msg);
+                return;
             }
 
             init();
-
-            if (name.length == 0) {
-                setError($name, '名字不能为空');
-                return;
+            $dialog.modal('hide');
+            if (data.uid == M.userid && data.version == M.version+1) {
+                M.version += 1;
+                refreshNav();
             } else {
-                setSuccess($name);
+                refresh();
             }
-
-            if (!phone1 || phone1 != phone || phone1.length != 11) {
-                setError($phone, '手机号格式错误，请输入11个阿拉伯数字');
-                return;
-            } else {
-                setSuccess($phone);
-            }
-
-            if (email.length > 0 && !email.match(/^([\w.-]+)@(.*)(\.\w+)$/)) {
-                setError($email, '邮箱格式错误');
-                return;
-            } else {
-                setSuccess($email);
-            }
-
-            if (name == M.username && phone == M.phone && email == M.email) {
-                init();
-                $dialog.modal('hide');
-                return;
-            }
-
-            ajax.post('/user-config', {
-                version: M.version,
-                name: name,
-                phone: phone,
-                email, email,
-            }, function(data) {
-                if (data.error) {
-                    var ids = {
-                        name: $name,
-                        phone: $phone,
-                        email: $email,
-                    };
-                    setError(ids[data.data] || $name, data.msg);
-                    return;
-                }
-
-                init();
-                $dialog.modal('hide');
-                if (data.uid == M.userid && data.version == M.version+1) {
-                    M.version += 1;
-                    refreshNav();
-                } else {
-                    refresh();
-                }
-            }, function(xhr, err) {
-                init();
-                $dialog.modal('hide');
-                $dialog.one('hidden.bs.modal', function() {
-                    infoDialog('修改失败！',  err);
-                });
+        }, function(xhr, err) {
+            init();
+            $dialog.modal('hide');
+            $dialog.one('hidden.bs.modal', function() {
+                infoDialog('修改失败！',  err);
             });
         });
     });
