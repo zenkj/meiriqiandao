@@ -11,11 +11,13 @@ $(document).ready(function() {
         inactiveHabitCount: 0,
         version: -1,
         activeHabits: {},
+        inactiveHabits: {},
     };
     var MAX_ACTIVE_HABITS = 5;
 
     // temporary data
     var T = {
+        currentPage: 'checkin', // or 'manage'
         currentHabit: null,
         //currentDate: new Date(),
         moving: false,      // table is moving
@@ -62,9 +64,8 @@ $(document).ready(function() {
 
 
     // get checkin state or set checkin state
-    function checkin(date, state) {
+    function checkin(habit, date, state) {
         var i;
-        var habit = T.currentHabit;
 
         if (!habit) return false;
 
@@ -95,9 +96,8 @@ $(document).ready(function() {
         }
     }
 
-    function isWorkDay(date) {
+    function isWorkDay(habit, date) {
         var i;
-        var habit = T.currentHabit;
         if (!habit) return true;
         var weekday = date.getDay();
         weekday = weekday == 0 ? 7 : weekday;
@@ -106,7 +106,7 @@ $(document).ready(function() {
 
     // update one checkin in table according to the habit setting
     function updateCheckin($td, date) {
-        var checkined = checkin(date);
+        var checkined = checkin(T.currentHabit, date);
 
         if (checkined) {
             $td.addClass('checkined');
@@ -114,7 +114,7 @@ $(document).ready(function() {
             $td.removeClass('checkined');
         }
 
-        var workday = isWorkDay(date);
+        var workday = isWorkDay(T.currentHabit, date);
         if (workday) {
             $td.removeClass('rest-day');
         } else {
@@ -157,14 +157,44 @@ $(document).ready(function() {
         }
     }
 
-
+    // update habit at checkin-body
     function updateHabit(habit) {
+        var $habit = $(habit.dom);
         $('.checkin-count', habit.dom).text(checkinCount(habit));
         if (habit == T.currentHabit) {
-            $(habit.dom).addClass('active');
+            $habit.addClass('active');
         } else {
-            $(habit.dom).removeClass('active');
+            $habit.removeClass('active');
         }
+
+        $habit.removeClass('list-group-item-success');
+        $habit.removeClass('list-group-item-info');
+        $habit.removeClass('list-group-item-warning');
+        $habit.removeClass('list-group-item-danger');
+
+        if (!habit.enable) return;
+
+        var date = new Date();
+        var i = 0;
+        var INFO = 2;
+        var WARNING = 5;
+        var ERROR = 8;
+        var cdate = new Date(habit.create_time);
+        while (!sameDay(date, cdate) && i < ERROR) {
+            if (isWorkDay(habit, date) && !checkin(habit, date))
+                i++;
+            date.setDate(date.getDate()-1);
+        }
+
+        var state = 'list-group-item-success';
+        if (i >= ERROR)
+            state = 'list-group-item-error';
+        else if (i >= WARNING)
+            state = 'list-group-item-warning';
+        else if (i >= INFO)
+            state = 'list-group-item-info';
+
+        $habit.addClass(state);
     }
 
     // update habits in habit list
@@ -172,7 +202,7 @@ $(document).ready(function() {
     //                 false: the model is not changed, reuse the dom object
     function updateHabits(refresh) {
         var hid, habit, $habit;
-        $list = $('#habit-list');
+        $list = $('#active-habit-list');
 
         if (refresh) $list.empty();
 
@@ -271,6 +301,9 @@ $(document).ready(function() {
         var year, checkins, i;
         var count = 0;
         var ones = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4];
+
+        if (typeof habit.checkin_count == 'number')
+            return habit.checkin_count;
 
         function onecount(n) {
             var c = 0;
@@ -554,7 +587,7 @@ $(document).ready(function() {
 
             var date = firstDayOfTable();
             date.setDate(date.getDate()+$td.data('tposition')-1);
-            var checkined = checkin(date);
+            var checkined = checkin(T.currentHabit, date);
 
             if ($td.hasClass('wait-server-response')) {
                 log('the server do not answer me:-(');
@@ -563,7 +596,7 @@ $(document).ready(function() {
 
             if (M.userid < 0) {
                 // dummy user
-                checkin(date, !checkined);
+                checkin(T.currentHabit, date, !checkined);
                 updateHabit(T.currentHabit);
                 updateCheckin($td, date);
             } else {
@@ -579,7 +612,7 @@ $(document).ready(function() {
                                 if (data.version == M.version + 1) {
                                     // everything is ok
                                     M.version = data.version;
-                                    checkin(date, !checkined);
+                                    checkin(T.currentHabit, date, !checkined);
                                     updateHabit(T.currentHabit);
                                     updateCheckins();
                                 } else {
@@ -937,17 +970,16 @@ $(document).ready(function() {
             $dialog.modal('hide');
 
             if (!data.habit.enable) {
-                infoDialog('当前激活的习惯过多，新创建的习惯处于未激活状态。请先禁用一个激活的习惯，再启用该习惯');
+                infoDialog('提醒', '当前激活的习惯过多，新创建的习惯处于未激活状态。请先禁用一个激活的习惯，再启用该习惯');
             }
 
             if (data.version == M.version+1) {
                 M.version += 1;
                 if (data.habit.enable) {
                     M.activeHabits[data.habit.id] = data.habit;
+                    M.activeHabitCount ++;
                     T.currentHabit = data.habit;
                     updateHabits(true);
-                } else if (M.inactiveHabits) {
-                    M.inactiveHabits[data.habit.id] = data.habit;
                 }
             } else {
                 refresh();
@@ -963,9 +995,17 @@ $(document).ready(function() {
 
 
     $('#dialog-user-config').on('show.bs.modal', function() {
-        $('#user-config-name').val(M.username);
-        $('#user-config-phone').val(M.phone);
-        $('#user-config-email').val(M.email);
+        var $errmsg = $('#dialog-user-config .error-message');
+        $errmsg.css('display', 'none');
+        removeCheck($('#user-config-name').val(M.username));
+        removeCheck($('#user-config-phone').val(M.phone));
+        removeCheck($('#user-config-email').val(M.email));
+    });
+
+    $('#dialog-new-habit').on('show.bs.modal', function() {
+        var $errmsg = $('#dialog-new-habit .error-message');
+        $errmsg.css('display', 'none');
+        removeCheck($('#new-habit-name'));
     });
 
     $('#button-user-config').click(function() {
@@ -1049,40 +1089,124 @@ $(document).ready(function() {
         });
     });
 
+    function workdayDesc(workday) {
+        var desc = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        var result = [];
+        for (i=0; i<7; i++) {
+            if (workday & (1<<(i+1)))
+                result.push(desc[i]);
+        }
+        return result.join('，');
+    }
+
+    $('#button-manage-habits').click(function() {
+        ajax.get('/api/v1/habits', {},
+            function(data) {
+                if (data.error) {
+                    infoDialog('错误', '获取所有习惯出错');
+                    return;
+                }
+
+                var habits = data.habits;
+                $habits = $('#all-habit-list');
+                $habits.empty();
+                for (var i=0; i<habits.length; i++) {
+                    var h = habits[i];
+                    var $h = $('<li></li>');
+                    $h.data('model', h);
+                    h.dom = $h[0];
+                    $h.addClass('habit list-group-item');
+                    var $count = $('<span class="badge checkin-count"></span>');
+                    $h.append($count);
+                    var $activator = $('<input type="checkbox" class="activator">');
+                    $h.append($activator);
+                    var $hinfo = $('<div class="habit-info"></div>');
+                    var $hname = $('<h5 class="habit-name"></h5>');
+                    $hname.text(h.name);
+                    $hinfo.append($hname);
+                    var cdate = new Date(h.create_time);
+                    var $hdesc1 = $('<p class="habit-desc">创建于' + (cdate.getYear()-1900) +
+                                    '年' + (cdate.getMonth()+1) + '月' + cdate.getDate() + '日</p>');
+                    var $hdesc2 = $('<p class="habit-desc">签到时间为'+workdayDesc(h.workday)+'</p>');
+                    $hinfo.append($hdesc1);
+                    $hinfo.append($hdesc2);
+                    $h.append($hinfo);
+
+                    $habits.append($h);
+
+                    updateHabit(h);
+                }
+                $('#button-manage-habits').css('display', 'none');
+                $('#checkin-body').css('display', 'none');
+                $('#button-checkin').css('display', 'block');
+                $('#manage-body').css('display', 'block');
+
+            }, function(xhr, err) {
+                infoDialog('获取所有习惯出错: ' + err);
+            });
+
+    });
+
+    $('#button-checkin').click(function() {
+        $('#button-checkin').css('display', 'none');
+        $('#button-manage-habits').css('display', 'block');
+        $('#manage-body').css('display', 'none');
+        $('#checkin-body').css('display', 'block');
+    });
+
 
 // Register Listeners End ------------------------
 
+    // refresh management body
+    function refreshManage() {
+    }
 
     // refresh view after big model changed (from MVC perspective)
-    function refreshView() {
+    function refreshCheckin() {
         var i;
-        if (M.habits.length > 0) {
+        if (M.activeHabitCount > 0) {
+            var keys = Object.keys(M.activeHabits);
             if (!T.currentHabit) {
-                T.currentHabit = M.habits[0];
+                T.currentHabit = M.activeHabits[keys[0]];
             } else {
-                for (i=0; i<M.habits.length; i++) {
-                    if (T.currentHabit.id == M.habits[i].id) {
-                        T.currentHabit = M.habits[i];
-                        break;
-                    }
-                }
-                if (i == M.habits.length)
-                    T.currentHabit = M.habits[0];
+                T.currentHabit = M.activeHabits[T.currentHabit.id];
+            }
+
+            if (!T.currentHabit) {
+                T.currentHabit = M.activeHabits[keys[0]];
             }
         } else {
             T.currentHabit = null;
         }
-
         updateHabits(true);
     }
 
     function refreshNav() {
-        if (M.userid < 0) {
-            $('nav').addClass('no-user');
-        } else {
-            $('nav').removeClass('no-user');
-        }
-        $('.user').text(M.username);
+        ajax.get('/api/v1/whoami', {},
+            function(data) {
+                if (data.error) {
+                    log('get user data failed: ' + data.msg);
+                    infoDialog('错误', '从服务器获取信息失败，请重新刷新');
+                    return;
+                }
+
+                M.userid = data.id;
+                M.username = data.name;
+                M.phone = data.phone;
+                M.email = data.email;
+                M.activeHabitCount = data.activeHabitCount;
+                M.inactiveHabitCount = data.inactiveHabitCount;
+
+                if (M.userid < 0) {
+                    $('nav').addClass('no-user');
+                } else {
+                    $('nav').removeClass('no-user');
+                }
+                $('.user').text(M.username);
+            },
+            function(xhr, err) {
+                log('get whoami failed');
+            });
     }
 
     // refresh after having gotten the userid and username
@@ -1096,14 +1220,18 @@ $(document).ready(function() {
                         infoDialog('提示', '从服务器获取信息失败，请重新刷新');
                         return;
                     }
+                    if (M.userid != data.uid) {
+                        infoDialog('错误', '登录超时，请重新打开页面登录');
+                        return;
+                    }
                     if (M.userid == data.uid && M.version == data.version) {
                         log('no data changed on server, every thing is ok');
                         return;
                     }
-                    M.userid = data.uid;
                     M.version = data.version;
-                    M.habits = data.habits;
-                    refreshView();
+                    M.activeHabits = data.activeHabits;
+                    M.activeHabitCount = Object.keys(data.activeHabits).length;
+                    refreshCheckin();
                  },
                  function(xhr, err) {
                     log('get checkin data failed');

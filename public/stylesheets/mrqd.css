@@ -69,6 +69,7 @@ nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
 }
 
 #manage-body {
+    overflow-y: auto;
     display: none;
 }
 
@@ -178,35 +179,36 @@ td.wait-server-response {
     width: 100%;
 }
 
-/*
-#habit-list {
-    margin: 0;
-    padding: 0;
-}
-
-.habit {
-    border-bottom: 1px solid #ddd;
-    color: #000;
-    background-color: #fff;
-    position: relative;
-    display: block;
-    padding: 10px 15px;
-}
-
-.habit:first-child {
-    border-top: 1px solid #ddd;
-}
-
-.current-habit {
-    color: #fff;
-    background-color: #337ab7 !important;
-}
-*/
-
 .habit:hover {
     background-color: #ddd;
 }
 
+
+.habit .activator {
+    float: left;
+}
+
+.habit .habit-info {
+    margin-left: 30px;
+}
+
+.habit-info .habit-name {
+    font-weight: 600;
+}
+
+.habit-info .habit-desc {
+    color: #aaa;
+    font-size: 12px;
+}
+
+.habit.active .habit-desc {
+    color: #ddd;
+}
+/*
+#all-habit-list input[type="checkbox"] {
+    margin-right: 10px;
+}
+*/
 
 #toolbar {
     position: absolute;
@@ -215,12 +217,11 @@ td.wait-server-response {
     padding: 10px;
 }
 
-#new-habit {
-    position: relative;
-    margin: 0 auto;
+#button-manage-habits {
 }
 
-#manage-habits {
+#button-checkin {
+    display: none;
 }
 
 

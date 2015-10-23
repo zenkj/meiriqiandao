@@ -67,7 +67,6 @@ router.post('/logout', function(req, res) {
 // @success return: {userid: 13, username: 'abc'}
 // @error return: {error: true, msg: '...'}
 router.post('/login', function(req, res) {
-    log.log('receive login');
     var user = req.body.user || '';
     var password = req.body.password || '';
     var phone = (user.match(/\d+/g) || [])[0];
@@ -127,7 +126,7 @@ router.post('/login', function(req, res) {
                 });
         },
 
-    ], function(err, result) {
+    ], function(err, data) {
         if (err) return ierr(res, '登录失败');
         req.session.userid = data.userid;
         req.session.username = data.username;
@@ -135,8 +134,9 @@ router.post('/login', function(req, res) {
         req.session.email = data.email;
         req.session.activeHabitCount = data.activeHabitCount;
         req.session.inactiveHabitCount = data.inactiveHabitCount;
+        req.session.activeHabits = {};
         req.session.cookie.maxAge = 10*24*60*60*1000;
-        res.json(result);
+        res.json(data);
     });
 });
 
@@ -704,19 +704,159 @@ router.put('/api/v1/habits/:hid', function(req, res) {
     ]);
 });
 
-// @params: {version: 12, name: 'abc', workday: 120, enable: 1/0} 
-// @success return: {version: 13}
+// @params: none or {active: 1/0}
+// @success return: {habits: []}
 // @error return: {error: true, msg: '...'}
 router.get('/api/v1/habits', function(req, res) {
+    var habits = [];
+    var uid = +req.session.userid || DEFAULT_UID; // userid will never be 0
+
+    var active = req.params.active;
+    var activeClause = '';
+    if (typeof active != 'undefined') {
+        active = (+active) & 1;
+        activeClause = ' and h.flag%2 = ' + active;
+    }
+
+    var sql = 'select h.id as id, h.name as name, h.flag as flag, h.create_time as create_time, ' + 
+              'sum(bit_count(c.m1)+bit_count(c.m2)+bit_count(c.m3)+bit_count(c.m4)+' +
+                  'bit_count(c.m5)+bit_count(c.m6)+bit_count(c.m7)+bit_count(c.m8)+' +
+                  'bit_count(c.m9)+bit_count(c.m10)+bit_count(c.m11)+bit_count(c.m12)) as checkin_count ' +
+                  'from habits h, checkins c where c.hid=h.id and h.uid=?' +
+                  activeClause + ' group by h.id order by h.flag%2 desc, h.create_time desc';
+    dbpool.query(sql, [uid], function(err, result) {
+        if (err) {
+            log.log('query habits failed for uid ' + uid + ': ' + err);
+            return ierr(res);
+        }
+
+        for (var i=0; i<result.length; i++) {
+            habits.push({
+                id: result[i].id,
+                name: result[i].name,
+                workday: result[i].flag & 0xFE,
+                enable: result[i].flag & 1,
+                create_time: result[i].create_time,
+                checkin_count: result[i].checkin_count,
+            });
+        }
+
+        res.json({habits:habits});
+    });
+
 });
 
-// do not support now
-// {version: 12}
+// @params: {verison: 11}
+// @success return: {version: 12}
+// @error return: {error: true, msg: '...'}
 router.delete('/api/v1/habits/:hid', function(req, res) {
-  var data = {
-    version: 13,
-  };
-  res.json(data);
+    var uid = req.session.userid;
+    var version = +req.body.version;
+    var hid = req.params.hid;
+    if (typeof uid == 'undefined' || (+uid) <= 0) {
+        return ierr(res, '请登录后再删除习惯');
+    }
+
+    if (typeof hid == 'undefined' || (+hid) <= 0) {
+        return ierr(res, '参数不合法');
+    }
+
+    async.waterfall([
+        function(cb) {
+            dbpool.getConnection(function(err, conn) {
+                if (err) {
+                    log.log('error: get connection failed: ' + err);
+                    ierr(err);
+                    return cb(err);
+                }
+                cb(null, conn);
+            });
+        },
+
+        function(conn, cb) {
+            conn.beginTransaction(function(err) {
+                if (err) {
+                    log.log('error: begin transaction failed: ' + err);
+                    conn.release();
+                    ierr(err);
+                    return cb(err);
+                }
+                cb(null, conn);
+            });
+        },
+
+        function(conn, cb) {
+            conn.query('delete from habits where id = ? and uid = ?', [+hid, +uid], function(err, result) {
+                if (err) {
+                    log.log('error: delete habit failed: ' + hid);
+                    conn.rollback(function() {conn.release();});
+                    ierr(err);
+                    return cb(err);
+                }
+
+                if (result.affectedRows == 0) {
+                    log.log("error: can't find habit " + hid + " to delete for user " + uid);
+                    conn.rollback(function() {conn.release();});
+                    ierr(err, '删除失败，请重新登录再试');
+                    return cb('err');
+                }
+
+                cb(null, conn);
+            });
+        },
+
+        function(conn, cb) {
+            conn.query('update versions set version = version + 1 where uid = ?',
+                [uid], function(err, result) {
+                    if (err) {
+                        log.log('update version failed for uid ' + uid);
+                        conn.rollback(function() {conn.release();});
+                        ierr(res);
+                        return cb(err);
+                    }
+                    cb(null, conn);
+            });
+        },
+
+
+        function(conn, cb) {
+            conn.commit(function(err) {
+                if (err) {
+                    log.log('commit transition faialed');
+                    conn.rollback(function() {conn.release();});
+                    ierr(res);
+                    return cb(err);
+                }
+
+                if (req.session.activeHabits[hid]) {
+                    req.session.activeHabits[hid] = false;
+                    req.session.activeHabitCount --;
+                } else {
+                    req.session.inactiveHabitCount --;
+                }
+
+                cb(null, conn);
+            });
+        },
+
+        function (conn, cb) {
+            conn.query('select version from versions where uid = ?',
+                [uid], function(err, result) {
+
+                conn.release();
+
+                if (err || result.length == 0) {
+                    log.log('select version for uid ' + uid + ' failed.');
+                    // use version + 2 to trigger client refresh
+                    version += 2;
+                } else {
+                    version = result[0].version;
+                }
+                res.json({version: version});
+                cb();
+            });
+        },
+    ]);
 });
 
 
@@ -852,11 +992,11 @@ router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
 
 router.get('/api/v1/checkins', function(req, res) {
     var uid = req.session.userid || DEFAULT_UID;
+    var habits = {};
     var data = {
         uid: uid,
-        habits: [],
+        activeHabits: habits,
     };
-    var habits = {};
 
     var finalcb = function (err, result) {
         if (err) return ierr(res);
@@ -886,8 +1026,6 @@ router.get('/api/v1/checkins', function(req, res) {
                     return cb(err);
                 }
 
-                //log.log('got ' + rows.length + ' habits for user ' + uid);
-
                 if (rows.length == 0) {
                     return finalcb();
                 }
@@ -899,10 +1037,13 @@ router.get('/api/v1/checkins', function(req, res) {
                     var name = rows[i].name;
                     var flag = rows[i].flag;
                     var workday = (flag & 0xFE);
+                    var create_time = rows[i].create_time;
                     habits[id] = {
                         id: id,
                         name: name,
                         workday: workday,
+                        enable: 1,
+                        create_time: create_time,
                         checkins: {},
                     };
                     req.session.activeHabits[id] = true;
@@ -913,7 +1054,7 @@ router.get('/api/v1/checkins', function(req, res) {
         },
 
         function(cb) {
-            dbpool.query('select * from checkins where uid = ?', [uid], function(err, rows) {
+            dbpool.query('select c.* from checkins c, habits h where h.uid = ? and h.flag%2=1 and c.hid=h.id ', [uid], function(err, rows) {
                 var i, h;
                 if (err) {
                     log.log('error: ' + err);
@@ -938,9 +1079,6 @@ router.get('/api/v1/checkins', function(req, res) {
                     ];
                 }
 
-                for (h in habits) {
-                    data.habits.push(habits[h]);
-                }
                 cb();
             });
         },
@@ -967,12 +1105,15 @@ router.get('/api/v1/whoami', function(req, res) {
             }
 
             for (var i=0; i<result.length; i++) {
-                if (result[i].enabled == 0)
+                if (result[i].enabled == 0) {
                     data.inactiveHabitCount = result[i].count;
-                else if (result[i].enabled == 1)
+                } else if (result[i].enabled == 1) {
                     data.activeHabitCount = result[i].count;
+                }
             }
 
+            req.session.inactiveHabitCount = data.inactiveHabitCount;
+            req.session.activeHabitCount = data.activeHabitCount;
             res.json(data);
         });
 });

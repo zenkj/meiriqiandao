@@ -8,6 +8,7 @@ create table if not exists users (id int not null auto_increment,
                     phone varchar(20),
                     email varchar(254), -- should <256, or fail as a key
                     password varchar(32),
+                    create_time timestamp default current_timestamp,
                     primary key (id),
                     unique (email),
                     unique (phone));
@@ -37,13 +38,15 @@ create table if not exists habits (id bigint not null auto_increment,
                      uid int not null,
                      name varchar(255) not null,
                      flag bigint unsigned not null,
+                     create_time timestamp default current_timestamp,
                      primary key (id),
                      unique key (uid, name));
 
-insert into habits values (-1, -1, '每天跑步5公里',    1|1<<1|1<<2|1<<3|1<<4|1<<5),
-                          (-2, -1, '晚上11点前睡觉',   1|1<<1|1<<2|1<<3|1<<4|1<<5|1<<7),
-                          (-3, -1, '每天阅读半小时',   1|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6),
-                          (-4, -1, '每周六陪父母聊天', 1|1<<6);
+insert into habits(id, uid, name, flag)
+     values (-1, -1, '每天跑步5公里',    1|1<<1|1<<2|1<<3|1<<4|1<<5),
+            (-2, -1, '晚上11点前睡觉',   1|1<<1|1<<2|1<<3|1<<4|1<<5|1<<7),
+            (-3, -1, '每天阅读半小时',   1|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6),
+            (-4, -1, '每周六陪父母聊天', 1|1<<6);
 
 
 drop table if exists checkins;
