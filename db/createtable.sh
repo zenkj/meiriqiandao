@@ -1,3 +1,2 @@
 #!/bin/sh
-
-mysql -umrqd -pmrqd123 mrqd <init.sql
+mysql -umrqd -pmrqd123 mrqd <`dirname $0`/init.sql

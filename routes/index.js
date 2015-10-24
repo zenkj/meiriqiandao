@@ -729,6 +729,8 @@ router.get('/api/v1/habits', function(req, res) {
             log.log('query habits failed for uid ' + uid + ': ' + err);
             return ierr(res);
         }
+        log.log('sql: ' + sql);
+        log.log('length: ' + result.length);
 
         for (var i=0; i<result.length; i++) {
             habits.push({
@@ -937,6 +939,7 @@ router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
             conn.query(sql, function(err, result) {
                 if (err) {
                     log.log('update checkin failed: ' + sql);
+                    log.log('err: ' + err);
                     conn.rollback(function() { conn.release(); });
                     return cb(err);
                 }
