@@ -213,6 +213,25 @@ nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
 .habit.active .habit-desc {
     color: #ddd;
 }
+
+.manage-header {
+    text-align: center;
+}
+
+#habit-summary {
+    position: relative;
+    top: 10px;
+    font-size: 12px;
+}
+
+#active-habit-count {
+    color: red;
+}
+
+#inactive-habit-count {
+    color: green;
+}
+
 /*
 #all-habit-list input[type="checkbox"] {
     margin-right: 10px;

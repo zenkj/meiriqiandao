@@ -526,7 +526,7 @@ router.post('/api/v1/habits', function(req, res) {
     ]);
 });
 
-// @params: {version: 12, name: 'abc', workday: 120, enable: 1/0} 
+// @params: {version: 12, name: 'abc', workday: 120, enable: 1/0, needCheckinInfo: 0/1} 
 // @success return: {version: 13}
 // @error return: {error: true, msg: '...'}
 router.put('/api/v1/habits/:hid', function(req, res) {
@@ -535,7 +535,7 @@ router.put('/api/v1/habits/:hid', function(req, res) {
         return ierr(res, '尚未登录，请登录后再修改习惯');
     }
 
-    var hid, version, name, workday, enable, changeEnable;
+    var hid, version, name, workday, enable, changeEnable, needCheckinInfo;
 
     if (typeof req.params.hid == 'undefined' || +req.params.hid <= 0) {
         log.log('hid invalid: ' + req.params.hid);
@@ -589,6 +589,10 @@ router.put('/api/v1/habits/:hid', function(req, res) {
             sets.push('flag = (flag & (~1)) | ?');
             vals.push(enable);
         }
+    }
+
+    if (typeof req.body.needCheckinInfo != 'undefined') {
+        needCheckinInfo = +req.body.needCheckinInfo;
     }
 
     if (sets.length == 0) {
@@ -686,20 +690,59 @@ router.put('/api/v1/habits/:hid', function(req, res) {
             conn.query('select version from versions where uid = ?',
                 [uid], function(err, result) {
 
-                conn.release();
-
                 if (err || result.length == 0) {
                     log.log('select version for uid ' + uid + ' failed.');
                     // use version + 2 to trigger client refresh
-                    res.json({version: version+2});
-                    return cb();
+                    version = version+2;
                 }
-                version = result[0].version;
-                res.json({version: version});
-                cb();
+                else version = result[0].version;
+
+                if (needCheckinInfo) {
+                    return cb(null, conn, version);
+                }
+
+                conn.release();
+
+                finalcb(null, {version: version});
             });
         },
-    ]);
+
+        function (conn, version, cb) {
+            conn.query('select * from checkins where hid = ?', [hid], function(err, result) {
+                conn.release();
+                var checkins = {};
+
+                if (err) {
+                    log.log('select checkin failed: ' + err);
+                    return cb(null, {version: version, checkins:checkins});
+                }
+
+                for (var i=0; i<result.length; i++) {
+                    checkins[result[i].year] = [
+                        result[i].m1,
+                        result[i].m2,
+                        result[i].m3,
+                        result[i].m4,
+                        result[i].m5,
+                        result[i].m6,
+                        result[i].m7,
+                        result[i].m8,
+                        result[i].m9,
+                        result[i].m10,
+                        result[i].m11,
+                        result[i].m12,
+                    ];
+                }
+
+                return cb(null, {version: version, checkins:checkins});
+
+            });
+        }
+    ], function finalcb(err, result){
+        if (!err) {
+            res.json(result);
+        }
+    });
 });
 
 // @params: none

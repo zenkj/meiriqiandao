@@ -99,6 +99,16 @@
     </div> <!-- .checkin-body -->
 
     <div id="manage-body">
+      <div class="container manage-header">
+        <div class="row">
+          <div class="col-xs-offset-3 col-xs-6 col-md-offset-4 col-md-4"> 
+            <h3>我的习惯</h3>
+          </div>
+          <div class="col-xs-3 col-md-4">
+            <p id="habit-summary"><span id="active-habit-count"></span>个启用<br/><span id="inactive-habit-count"></span>个未启用</p>
+          </div>
+        </div>
+      </div>
       <ul id="all-habit-list" class="list-group">
       </ul>
     </div> <!-- .manage-body -->
@@ -305,6 +315,75 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
             <button type="button" class="btn btn-primary" id="button-new-habit">创建</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 对话框：修改习惯 -->
+    <div class="modal fade" id="dialog-change-habit" tabindex="-1" role="dialog" aria-labelledby="dialog-change-habit-title">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+            <h2 class="modal-title" id="dialog-change-habit-title">修改习惯</h2>
+          </div>
+          <div class="modal-body">
+            <p class="error-message"></p>
+            <div class="form-group">
+              <label class="control-label" for="change-habit-name">名字</label>
+              <input type="text" class="form-control" id="change-habit-name" placeholder="习惯名字" aria-describedby="change-habit-name-desc">
+              <span id="change-habit-name-desc" class="sr-only">修改习惯名字</span>
+            </div>
+            <ul class="list-inline" id="change-habit-workdays">
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="1" checked>
+                  周一
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="2" checked>
+                  周二
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="3" checked>
+                  周三
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="4" checked>
+                  周四
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="5" checked>
+                  周五
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="6">
+                  周六
+                </label>
+              </li>
+              <li class="checkbox">
+                <label>
+                  <input type="checkbox" value="7">
+                  周日
+                </label>
+              </li>
+            </ul>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary" id="button-change-habit">保存</button>
           </div>
         </div>
       </div>
