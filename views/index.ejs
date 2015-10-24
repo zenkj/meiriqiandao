@@ -1,4 +1,16 @@
-<!DOCTYPE html>
+<%
+    function sameYear(d1, d2) {
+        return d1.getFullYear() == d2.getFullYear();
+    }
+
+    function sameMonth(d1, d2) {
+        return sameYear(d1, d2) && d1.getMonth() == d2.getMonth();
+    }
+
+    function sameDay(d1, d2) {
+        return sameMonth(d1, d2) && d1.getDate() == d2.getDate();
+    }
+%><!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8">
@@ -52,6 +64,7 @@
           <% var time = date.getTime();
              var dates = [new Date(time), new Date(time), new Date(time)];
              var months = [];
+             var today = new Date();
              dates.forEach(function(d, i) {
                  d.setMonth(d.getMonth()+i-1);
                  d.setDate(1);
@@ -66,8 +79,9 @@
             <% for (var j=0; j<3; j++) {
                  for (var k=0; k<7; k++) {
                    var currMonth = dates[j].getMonth() == months[j] ? " in-current-month" : "";
+                   var isToday = sameDay(dates[j], today) ? " is-today" : "";
             %>
-            <td class="checkin-cell<%= currMonth%>">
+            <td class="checkin-cell<%= currMonth%><%= isToday%>">
                 <%= dates[j].getDate() %>
             </td>
             <%     dates[j].setDate(dates[j].getDate()+1);
@@ -86,206 +100,6 @@
 
     <div id="manage-body">
       <ul id="all-habit-list" class="list-group">
-        <li class="habit list-group-item list-group-item-info">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水info
-          </label>
-        </li>
-        <li class="habit list-group-item active">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水active
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-warning">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水warning
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-success">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水success
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-danger">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">喝水danger
-          </label>
-        </li>
-        <li class="habit list-group-item">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水
-          </label>
-        </li>
-        <li class="habit list-group-item active">
-          <span class="badge">24</span>
-          <input type="checkbox" class="activator">
-          <div class="habit-info">
-            <h4 class="habit-name">喝水喝水喝水喝水喝水喝水喝水喝很多水喝水喝水喝水喝水喝水喝很多水</h4>
-            <p class="habit-desc">创建于14年5月16</p>
-            <p class="habit-desc">签到时间为周一，周二，周三，周四，周五</p>
-          </div>
-        </li>
-        <li class="habit list-group-item list-group-item-info">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水info
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-warning active">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水active success
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-warning">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水warning
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-success">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水success
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-danger">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">喝水danger
-          </label>
-        </li>
-        <li class="habit list-group-item">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水
-          </label>
-        </li>
-        <li class="habit list-group-item">
-          <span class="badge">24</span>
-          <input type="checkbox" class="activator">
-          <div class="habit-info">
-            <h4 class="habit-name">喝水喝水喝水喝水喝水喝水喝水喝很多水喝水喝水喝水喝水喝水喝很多水</h4>
-            <p class="habit-desc">创建于14年5月16</p>
-            <p class="habit-desc">签到时间为周一，周二，周三，周四，周五</p>
-          </div>
-        </li>
-        <li class="habit list-group-item list-group-item-info">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水info
-          </label>
-        </li>
-        <li class="habit list-group-item active">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水active
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-warning">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水warning
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-success">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水success
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-danger">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">喝水danger
-          </label>
-        </li>
-        <li class="habit list-group-item">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水
-          </label>
-        </li>
-        <li class="habit list-group-item active">
-          <span class="badge">24</span>
-          <input type="checkbox" class="activator">
-          <div class="habit-info">
-            <h4 class="habit-name">喝水喝水喝水喝水喝水喝水喝水喝很多水喝水喝水喝水喝水喝水喝很多水</h4>
-            <p class="habit-desc">创建于14年5月16</p>
-            <p class="habit-desc">签到时间为周一，周二，周三，周四，周五</p>
-          </div>
-        </li>
-        <li class="habit list-group-item list-group-item-info">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水info
-          </label>
-        </li>
-        <li class="habit list-group-item active">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水active
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-warning">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水warning
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-success">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水success
-          </label>
-        </li>
-        <li class="habit list-group-item list-group-item-danger">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">喝水danger
-          </label>
-        </li>
-        <li class="habit list-group-item">
-          <span class="badge">24</span>
-          <label>
-            <input type="checkbox">
-            喝水
-          </label>
-        </li>
-        <li class="habit list-group-item active">
-          <span class="badge">24</span>
-          <input type="checkbox" class="activator">
-          <div class="habit-info">
-            <h4 class="habit-name">喝水喝水喝水喝水喝水喝水喝水喝很多水喝水喝水喝水喝水喝水喝很多水</h4>
-            <p class="habit-desc">创建于14年5月16</p>
-            <p class="habit-desc">签到时间为周一，周二，周三，周四，周五</p>
-          </div>
-        </li>
       </ul>
     </div> <!-- .manage-body -->
 

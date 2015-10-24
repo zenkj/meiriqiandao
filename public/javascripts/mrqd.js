@@ -1,4 +1,5 @@
 $(document).ready(function() {
+    'use strict';
 
 // Global Data Begin-------------------------------
     // model data
@@ -202,7 +203,7 @@ $(document).ready(function() {
     //                 false: the model is not changed, reuse the dom object
     function updateHabits(refresh) {
         var hid, habit, $habit;
-        $list = $('#active-habit-list');
+        var $list = $('#active-habit-list');
 
         if (refresh) $list.empty();
 
@@ -375,8 +376,8 @@ $(document).ready(function() {
     // slide to or switch to the destination month
     // if the current month is near the dest month, then slide,
     // otherwise switch.
-    // td can be destination month or number offset to the current month 
-    function slideTo(td) {
+    // todate can be destination month or number offset to the current month 
+    function slideTo(todate) {
         // update checkin table
         // adjust the table position, center it
         function resetTable(date) {
@@ -392,6 +393,8 @@ $(document).ready(function() {
                 date.setMonth(date.getMonth()+1);
             }
 
+            var today = new Date();
+
             var $trs = $('.checkin-table tr');
             for (i=0; i<6; i++) {
                 var $tr = $trs.eq(i+1);
@@ -404,6 +407,12 @@ $(document).ready(function() {
                             $td.addClass("in-current-month");
                         } else {
                             $td.removeClass("in-current-month");
+                        }
+
+                        if (sameDay(dates[j], today)) {
+                            $td.addClass("is-today");
+                        } else {
+                            $td.removeClass("is-today");
                         }
 
                         updateCheckin($td, dates[j]);
@@ -421,41 +430,40 @@ $(document).ready(function() {
             resetTable(date);
             currentDate(date);
             var today = new Date();
-            if (date.getFullYear() == today.getFullYear() &&
-                date.getMonth() == today.getMonth()) {
+            if (sameMonth(date, today)) {
                 $('.return-today').removeClass('display');
             } else {
                 $('.return-today').addClass('display');
             }
         }
 
-        var td, cd = currentDate();
+        var cd = currentDate();
         cd.setDate(1);
 
         var deltaMonth = 0;
 
-        if (typeof td == 'number') {
-            cd.setMonth(cd.getMonth()+td);
-            if (td <-1 || td >1) {
+        if (typeof todate == 'number') {
+            cd.setMonth(cd.getMonth()+todate);
+            if (todate <-1 || todate >1) {
                 gotoDate(cd);
                 return;
             }
-            deltaMonth = td;
-            td = cd;
+            deltaMonth = todate;
+            todate = cd;
         } else {
-            td.setDate(1);
+            todate.setDate(1);
             var prev = new Date(cd.getTime());
             var next = new Date(cd.getTime());
             prev.setMonth(prev.getMonth()-1);
             next.setMonth(next.getMonth()+1);
-            if (sameMonth(cd, td)) {
+            if (sameMonth(cd, todate)) {
                 deltaMonth = 0;
-            } else if (sameMonth(next, td)) {
+            } else if (sameMonth(next, todate)) {
                 deltaMonth = 1;
-            } else if (sameMonth(prev, td)) {
+            } else if (sameMonth(prev, todate)) {
                 deltaMonth = -1;
             } else {
-                gotoDate(td);
+                gotoDate(todate);
                 return;
             }
         }
@@ -464,7 +472,7 @@ $(document).ready(function() {
         // means auto move to prev month, current month, or next month
         var $table = $('.checkin-table');
         var $container = $table.parent();
-        var date = td;
+        var date = todate;
         var destLeft = (-deltaMonth-1)*$container.width();
         if($table.position().left == destLeft) {
             gotoDate(date);
@@ -930,7 +938,6 @@ $(document).ready(function() {
         });
     });
 
-
     $('#button-new-habit').click(function() {
         var $dialog = $('#dialog-new-habit');
         var $name = $('#new-habit-name');
@@ -1060,7 +1067,7 @@ $(document).ready(function() {
             version: M.version,
             name: name,
             phone: phone,
-            email, email,
+            email: email,
         }, function(data) {
             if (data.error) {
                 var ids = {
@@ -1239,4 +1246,5 @@ $(document).ready(function() {
     }
 
     refresh();
+
 });

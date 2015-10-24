@@ -87,12 +87,10 @@ router.post('/login', function(req, res) {
             dbpool.query(sql, [user], function(err, rows) {
                 if (err) {
                     log.log('error: ' + err.message);
-                    res.json({error: true});
                     return cb(err);
                 }
 
                 if (rows.length == 0) {
-                    res.json({error: true});
                     return cb('err');
                 }
 
@@ -704,46 +702,64 @@ router.put('/api/v1/habits/:hid', function(req, res) {
     ]);
 });
 
-// @params: none or {active: 1/0}
+// @params: none
 // @success return: {habits: []}
 // @error return: {error: true, msg: '...'}
 router.get('/api/v1/habits', function(req, res) {
     var habits = [];
+    var habitMap = {};
+    var checkins = [];
     var uid = +req.session.userid || DEFAULT_UID; // userid will never be 0
 
-    var active = req.params.active;
-    var activeClause = '';
-    if (typeof active != 'undefined') {
-        active = (+active) & 1;
-        activeClause = ' and h.flag%2 = ' + active;
-    }
+    async.parallel([
+        function(cb) {
+            dbpool.query('select * from habits where uid = ? order by flag%2 desc, id desc', [uid], function(err, result) {
+                if (err) {
+                    log.log('query habits failed for uid ' + uid + ': ' + err);
+                    return cb(err);
+                }
 
-    var sql = 'select h.id as id, h.name as name, h.flag as flag, h.create_time as create_time, ' + 
-              'sum(bit_count(c.m1)+bit_count(c.m2)+bit_count(c.m3)+bit_count(c.m4)+' +
-                  'bit_count(c.m5)+bit_count(c.m6)+bit_count(c.m7)+bit_count(c.m8)+' +
-                  'bit_count(c.m9)+bit_count(c.m10)+bit_count(c.m11)+bit_count(c.m12)) as checkin_count ' +
-                  'from habits h, checkins c where c.hid=h.id and h.uid=?' +
-                  activeClause + ' group by h.id order by h.flag%2 desc, h.create_time desc';
-    dbpool.query(sql, [uid], function(err, result) {
-        if (err) {
-            log.log('query habits failed for uid ' + uid + ': ' + err);
-            return ierr(res);
-        }
-        log.log('sql: ' + sql);
-        log.log('length: ' + result.length);
+                for (var i=0; i<result.length; i++) {
+                    var h = {
+                        id: result[i].id,
+                        name: result[i].name,
+                        workday: result[i].flag & 0xFE,
+                        enable: result[i].flag & 1,
+                        create_time: result[i].create_time,
+                        checkin_count: 0,
+                    };
+                    habits.push(h);
+                    habitMap[h.id] = h;
+                }
 
-        for (var i=0; i<result.length; i++) {
-            habits.push({
-                id: result[i].id,
-                name: result[i].name,
-                workday: result[i].flag & 0xFE,
-                enable: result[i].flag & 1,
-                create_time: result[i].create_time,
-                checkin_count: result[i].checkin_count,
+                cb();
             });
+        },
+
+        function(cb) {
+            var sql = 'select hid, ' +
+                      'sum(bit_count(m1)+bit_count(m2)+bit_count(m3)+bit_count(m4)+' +
+                          'bit_count(m5)+bit_count(m6)+bit_count(m7)+bit_count(m8)+' +
+                          'bit_count(m9)+bit_count(m10)+bit_count(m11)+bit_count(m12)) as checkin_count ' +
+                      ' from checkins where uid = ? group by hid';
+            dbpool.query(sql, [uid], function(err, result) {
+                if (err) {
+                    log.log('query checkin failed for user ' + uid + ': ' + err);
+                    return cb(err);
+                }
+
+                checkins = result;
+                cb();
+            });
+        },
+    ], function(err, result) {
+        if (err) return ierr(res);
+        for (var i=0; i<checkins.length; i++) {
+            var h = habitMap[checkins[i].hid];
+            if (h) h.checkin_count = checkins[i].checkin_count;
         }
 
-        res.json({habits:habits});
+        res.json({habits: habits});
     });
 
 });
