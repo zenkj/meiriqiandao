@@ -1089,17 +1089,17 @@ $(document).ready(function() {
         });
     });
 
-    function workdayDesc(workday) {
-        var desc = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-        var result = [];
-        for (i=0; i<7; i++) {
-            if (workday & (1<<(i+1)))
-                result.push(desc[i]);
-        }
-        return result.join('，');
-    }
-
     $('#button-manage-habits').click(function() {
+        function workdayDesc(workday) {
+            var desc = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+            var result = [];
+            for (i=0; i<7; i++) {
+                if (workday & (1<<(i+1)))
+                    result.push(desc[i]);
+            }
+            return result.join('，');
+        }
+
         ajax.get('/api/v1/habits', {},
             function(data) {
                 if (data.error) {
