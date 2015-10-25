@@ -17,6 +17,27 @@ var DEFAULT_UID = -1;
 var DEFAULT_UNAME = '签到君';
 var MAX_ACTIVE_HABITS = 5;
 
+/* utilities  begin */
+function isValidPhone(phone) {
+    if (typeof phone != 'string') return false;
+    var phone = (phone.match(/\d+/g) || [])[0];
+    if (phone && phone.length == 11)
+        return true;
+    return false;
+}
+
+function isValidEmail(email) {
+    if (typeof phone != 'string') return false;
+    var email = email.match(/^([\w.-]+)@(.*)(\.\w+)$/);
+    if (email) return true;
+    return false;
+}
+
+function ierr(res, msg) {
+    res.json({error: true, msg: msg||'Internal Server Error'});
+}
+/* utilities  end   */
+
 /* GET home page. */
 router.get('/', function(req, res, next) {
     var data = {
@@ -69,18 +90,16 @@ router.post('/logout', function(req, res) {
 router.post('/login', function(req, res) {
     var user = req.body.user || '';
     var password = req.body.password || '';
-    var phone = (user.match(/\d+/g) || [])[0];
-    var email = user.match(/^([\w.-]+)@(.*)(\.\w+)$/);
-    if (user.length == 0 ||
-        password.length == 0 ||
-        ((phone != user || phone.length != 11) && !email)) {
+    var phone = isValidPhone(user) ? user : null;
+    var email = isValidEmail(user) ? user : null;
+    if (password.length == 0 || (!phone && !email)) {
         res.json({error:true});
         return;
     }
 
-    var sql = 'select * from users where phone = ?';
+    var sql = 'select u.*, v.version from users u, versions v where u.phone = ?';
     if (!phone)
-        sql = 'select * from users where email = ?';
+        sql = 'select u.*, v.version from users u, versions v where u.email = ?';
 
     async.waterfall([
         function(cb) {
@@ -97,7 +116,7 @@ router.post('/login', function(req, res) {
                 if (rows[0].password == hash.hash(password)) {
                     log.log('user ' + rows[0].name + '('+ rows[0].id + ') logined');
                     req.session.regenerate(function(err) {
-                        cb(null, {userid: rows[0].id, username: rows[0].name, phone: rows[0].phone||'', email: rows[0].email||''});
+                        cb(null, {userid: rows[0].id, username: rows[0].name, phone: rows[0].phone||'', email: rows[0].email||'', version: version});
                     });
                 } else {
                     cb('err');
@@ -124,6 +143,23 @@ router.post('/login', function(req, res) {
                 });
         },
 
+        function (data, cb) {
+            dbpool.query('select id from habits where flag%2=1 and uid=?', [data.userid], function(err, result) {
+                if (err) {
+                    log.log('error: ' + err);
+                    req.session.destroy();
+                    return cb(err);
+                }
+
+                data.activeHabits = {};
+                for (var i=0; i<result.length; i++) {
+                    data.activeHabits[result[i].id] = true;
+                }
+
+                cb(null, data);
+            });
+        },
+
     ], function(err, data) {
         if (err) return ierr(res, '登录失败');
         req.session.userid = data.userid;
@@ -132,9 +168,13 @@ router.post('/login', function(req, res) {
         req.session.email = data.email;
         req.session.activeHabitCount = data.activeHabitCount;
         req.session.inactiveHabitCount = data.inactiveHabitCount;
-        req.session.activeHabits = {};
+        req.session.activeHabits = data.activeHabits;
+        //req.session.version = data.version;
         req.session.cookie.maxAge = 10*24*60*60*1000;
-        res.json(data);
+        res.json({userid: data.userid,
+                  username: data.username,
+                  phone: data.phone,
+                  email: data.email});
     });
 });
 
@@ -148,13 +188,12 @@ router.post('/signup', function(req, res) {
     var password = req.body.password || '';
     var name = req.body.name || '';
 
-    var phone1 = (phone.match(/\d+/g) || [])[0];
-    if (phone1 != phone || !phone1 || phone1.length != 11) {
+    if (!isValidPhone(phone)) {
         res.json({error: true, data: 'phone', msg: '手机号格式错误，请输入11个阿拉伯数字'});
         return;
     }
 
-    if (email.length > 0 && !email.match(/^([\w.-]+)@(.*)(\.\w+)$/)) {
+    if (email.length > 0 && !isValidEmail(email)) {
         res.json({error: true, data: 'email', msg: '邮箱格式错误'});
         return;
     }
@@ -274,13 +313,12 @@ router.post('/user-config', function(req, res) {
     var phone = req.body.phone || '';
     var email = req.body.email || '';
 
-    var phone1 = (phone.match(/\d+/g) || [])[0];
-    if (phone1 != phone || !phone1 || phone1.length != 11) {
+    if (!isValidPhone(phone)) {
         res.json({error: true, data: 'phone', msg: '手机号格式错误，请输入11个阿拉伯数字'});
         return;
     }
 
-    if (email.length > 0 && !email.match(/^([\w.-]+)@(.*)(\.\w+)$/)) {
+    if (email.length > 0 && !isValidEmail(email)) {
         res.json({error: true, data: 'email', msg: '邮箱格式错误'});
         return;
     }
@@ -381,10 +419,6 @@ router.post('/user-config', function(req, res) {
     ]);
 });
 
-
-function ierr(res, msg) {
-    res.json({error: true, msg: msg||'Internal Server Error'});
-}
 
 // @params: {version: 12, name: 'abc', workday: 120} 
 // @success return: {version: 13, habit: {id:12, name:'abc', workday: 120, enable: 1/0}}
@@ -518,7 +552,6 @@ router.post('/api/v1/habits', function(req, res) {
                             name: name,
                             workday: workday,
                             enable: enable,
-                            checkins:{}
                         }});
                 cb();
             });
@@ -526,7 +559,7 @@ router.post('/api/v1/habits', function(req, res) {
     ]);
 });
 
-// @params: {version: 12, name: 'abc', workday: 120, enable: 1/0, needCheckinInfo: 0/1} 
+// @params: {version: 12, name: 'abc', workday: 120, enable: 1/0} 
 // @success return: {version: 13}
 // @error return: {error: true, msg: '...'}
 router.put('/api/v1/habits/:hid', function(req, res) {
@@ -535,7 +568,7 @@ router.put('/api/v1/habits/:hid', function(req, res) {
         return ierr(res, '尚未登录，请登录后再修改习惯');
     }
 
-    var hid, version, name, workday, enable, changeEnable, needCheckinInfo;
+    var hid, version, name, workday, enable, changeEnable;
 
     if (typeof req.params.hid == 'undefined' || +req.params.hid <= 0) {
         log.log('hid invalid: ' + req.params.hid);
@@ -586,13 +619,9 @@ router.put('/api/v1/habits/:hid', function(req, res) {
         }
 
         if (changeEnable) {
-            sets.push('flag = (flag & (~1)) | ?');
+            sets.push('flag = (flag & 0xFE) | ?');
             vals.push(enable);
         }
-    }
-
-    if (typeof req.body.needCheckinInfo != 'undefined') {
-        needCheckinInfo = +req.body.needCheckinInfo;
     }
 
     if (sets.length == 0) {
@@ -697,47 +726,12 @@ router.put('/api/v1/habits/:hid', function(req, res) {
                 }
                 else version = result[0].version;
 
-                if (needCheckinInfo) {
-                    return cb(null, conn, version);
-                }
-
                 conn.release();
 
-                finalcb(null, {version: version});
+                cb(null, {version: version});
             });
         },
 
-        function (conn, version, cb) {
-            conn.query('select * from checkins where hid = ?', [hid], function(err, result) {
-                conn.release();
-                var checkins = {};
-
-                if (err) {
-                    log.log('select checkin failed: ' + err);
-                    return cb(null, {version: version, checkins:checkins});
-                }
-
-                for (var i=0; i<result.length; i++) {
-                    checkins[result[i].year] = [
-                        result[i].m1,
-                        result[i].m2,
-                        result[i].m3,
-                        result[i].m4,
-                        result[i].m5,
-                        result[i].m6,
-                        result[i].m7,
-                        result[i].m8,
-                        result[i].m9,
-                        result[i].m10,
-                        result[i].m11,
-                        result[i].m12,
-                    ];
-                }
-
-                return cb(null, {version: version, checkins:checkins});
-
-            });
-        }
     ], function finalcb(err, result){
         if (!err) {
             res.json(result);
@@ -746,17 +740,21 @@ router.put('/api/v1/habits/:hid', function(req, res) {
 });
 
 // @params: none
-// @success return: {habits: []}
+// @success return: {version: 13, uid: 14, habits: []}
 // @error return: {error: true, msg: '...'}
 router.get('/api/v1/habits', function(req, res) {
     var habits = [];
     var habitMap = {};
+    var activeHabits = {};
+    var activeHabitCount = 0;
+    var inactiveHabitCount = 0;
     var checkins = [];
+    var version = 0;
     var uid = +req.session.userid || DEFAULT_UID; // userid will never be 0
 
     async.parallel([
         function(cb) {
-            dbpool.query('select * from habits where uid = ? order by flag%2 desc, id desc', [uid], function(err, result) {
+            dbpool.query('select * from habits where uid = ? order by id desc', [uid], function(err, result) {
                 if (err) {
                     log.log('query habits failed for uid ' + uid + ': ' + err);
                     return cb(err);
@@ -769,28 +767,40 @@ router.get('/api/v1/habits', function(req, res) {
                         workday: result[i].flag & 0xFE,
                         enable: result[i].flag & 1,
                         create_time: result[i].create_time,
-                        checkin_count: 0,
+                        checkins: {},
                     };
                     habits.push(h);
                     habitMap[h.id] = h;
+                    if (h.enable) {
+                        activeHabits[h.id] = true;
+                        activeHabitCount ++;
+                    } else {
+                        inactiveHabitCount ++;
+                    }
                 }
-
                 cb();
             });
         },
 
+
         function(cb) {
-            var sql = 'select hid, ' +
-                      'sum(bit_count(m1)+bit_count(m2)+bit_count(m3)+bit_count(m4)+' +
-                          'bit_count(m5)+bit_count(m6)+bit_count(m7)+bit_count(m8)+' +
-                          'bit_count(m9)+bit_count(m10)+bit_count(m11)+bit_count(m12)) as checkin_count ' +
-                      ' from checkins where uid = ? group by hid';
-            dbpool.query(sql, [uid], function(err, result) {
+            dbpool.query('select version from versions where uid = ?', [uid], function(err, result) {
+                if (err || result.length == 0) {
+                    log.log('get version failed for user ' + uid + ': ' + err || 'not exist');
+                    return cb(err||'err');
+                }
+                version = result[0].version;
+                cb();
+            });
+        },
+
+
+        function(cb) {
+            dbpool.query('select * from checkins where uid = ?', [uid], function(err, result) {
                 if (err) {
                     log.log('query checkin failed for user ' + uid + ': ' + err);
                     return cb(err);
                 }
-
                 checkins = result;
                 cb();
             });
@@ -799,10 +809,29 @@ router.get('/api/v1/habits', function(req, res) {
         if (err) return ierr(res);
         for (var i=0; i<checkins.length; i++) {
             var h = habitMap[checkins[i].hid];
-            if (h) h.checkin_count = checkins[i].checkin_count;
+            if (h) {
+                h.checkins[checkins[i].year] = [
+                    checkins[i].m1,
+                    checkins[i].m2,
+                    checkins[i].m3,
+                    checkins[i].m4,
+                    checkins[i].m5,
+                    checkins[i].m6,
+                    checkins[i].m7,
+                    checkins[i].m8,
+                    checkins[i].m9,
+                    checkins[i].m10,
+                    checkins[i].m11,
+                    checkins[i].m12,
+                ];
+            }
         }
 
-        res.json({habits: habits});
+        req.session.activeHabits = activeHabits;
+        req.session.activeHabitCount = activeHabitCount;
+        req.session.inactiveHabitCount = inactiveHabitCount;
+
+        res.json({version: version, uid: uid, habits: habits});
     });
 
 });
@@ -927,11 +956,13 @@ router.delete('/api/v1/habits/:hid', function(req, res) {
 router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
     var uid = req.session.userid;
 
-    if (!uid) {
+    if (!uid || +uid < 0) {
         log.log('error: checkin before login....');
         ierr(res, '尚未登录，请登录后再签到');
         return;
     }
+
+    uid = +uid;
 
     var chid = req.params.hid_yyyy_mm_dd || '';
     var version = req.body.version;
@@ -1052,102 +1083,6 @@ router.put('/api/v1/checkins/:hid_yyyy_mm_dd', function(req, res) {
 
 });
 
-router.get('/api/v1/checkins', function(req, res) {
-    var uid = req.session.userid || DEFAULT_UID;
-    var habits = {};
-    var data = {
-        uid: uid,
-        activeHabits: habits,
-    };
-
-    var finalcb = function (err, result) {
-        if (err) return ierr(res);
-        res.json(data);
-    }
-
-    async.waterfall([
-        function(cb) {
-            dbpool.query('select version from versions where uid = ?', [uid], function(err, rows) {
-                if (err) {
-                    log.log('error: ' + err);
-                    return cb(err);
-                }
-                if (rows.length == 0) {
-                    log.log('error: no version specified for ' + uid);
-                    return cb(err);
-                }
-                data.version = +rows[0].version;
-                cb();
-            });
-        },
-
-        function(cb) {
-            dbpool.query('select * from habits where flag%2 = 1 && uid = ?', [uid], function(err, rows) {
-                if (err) {
-                    log.log('error: ' + err);
-                    return cb(err);
-                }
-
-                if (rows.length == 0) {
-                    return finalcb();
-                }
-
-                req.session.activeHabits = {};
-
-                for (var i=0; i<rows.length; i++) {
-                    var id = rows[i].id;
-                    var name = rows[i].name;
-                    var flag = rows[i].flag;
-                    var workday = (flag & 0xFE);
-                    var create_time = rows[i].create_time;
-                    habits[id] = {
-                        id: id,
-                        name: name,
-                        workday: workday,
-                        enable: 1,
-                        create_time: create_time,
-                        checkins: {},
-                    };
-                    req.session.activeHabits[id] = true;
-                }
-
-                cb();
-            });
-        },
-
-        function(cb) {
-            dbpool.query('select c.* from checkins c, habits h where h.uid = ? and h.flag%2=1 and c.hid=h.id ', [uid], function(err, rows) {
-                var i, h;
-                if (err) {
-                    log.log('error: ' + err);
-                    return cb(err);
-                }
-                //log.log('got ' + rows.length + ' checkins for user ' + uid);
-                for (i=0; i<rows.length; i++) {
-                    h = habits[rows[i].hid];
-                    h.checkins[rows[i].year] = [
-                        rows[i].m1,
-                        rows[i].m2,
-                        rows[i].m3,
-                        rows[i].m4,
-                        rows[i].m5,
-                        rows[i].m6,
-                        rows[i].m7,
-                        rows[i].m8,
-                        rows[i].m9,
-                        rows[i].m10,
-                        rows[i].m11,
-                        rows[i].m12,
-                    ];
-                }
-
-                cb();
-            });
-        },
-    
-    ], finalcb);
-
-});
 
 router.get('/api/v1/whoami', function(req, res) {
     var data = {
@@ -1155,29 +1090,9 @@ router.get('/api/v1/whoami', function(req, res) {
         name: req.session.username || '签到君',
         phone: req.session.phone || '',
         email: req.session.email || '',
-        activeHabitCount: 0,
-        inactiveHabitCount: 0,
     };
 
-    dbpool.query('select flag%2 as enabled, count(*) as count from habits where uid = ? group by enabled',
-        [data.id], function(err, result) {
-            if (err) {
-                log.log('error: ' + err);
-                return ierr(res, '查询出错');
-            }
-
-            for (var i=0; i<result.length; i++) {
-                if (result[i].enabled == 0) {
-                    data.inactiveHabitCount = result[i].count;
-                } else if (result[i].enabled == 1) {
-                    data.activeHabitCount = result[i].count;
-                }
-            }
-
-            req.session.inactiveHabitCount = data.inactiveHabitCount;
-            req.session.activeHabitCount = data.activeHabitCount;
-            res.json(data);
-        });
+    res.json(data);
 });
 
 module.exports = router;

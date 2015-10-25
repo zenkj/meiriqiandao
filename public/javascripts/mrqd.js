@@ -8,11 +8,10 @@ $(document).ready(function() {
         username: '签到君',
         email: '',
         phone: '',
-        activeHabitCount: 0,
-        inactiveHabitCount: 0,
         version: -1,
-        activeHabits: {},
+        activeHabits: [],
         habits: [],
+        habitMap: {},
     };
     var MAX_ACTIVE_HABITS = 5;
 
@@ -105,131 +104,18 @@ $(document).ready(function() {
         return !!(habit.workday & (1<<weekday));
     }
 
-    // update one checkin in table according to the habit setting
-    function updateCheckin($td, date) {
-        var checkined = checkin(T.currentHabit, date);
-
-        if (checkined) {
-            $td.addClass('checkined');
-        } else {
-            $td.removeClass('checkined');
+    function workdayDesc(workday) {
+        var desc = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        var result = [];
+        var i;
+        for (i=0; i<7; i++) {
+            if (workday & (1<<(i+1)))
+                result.push(desc[i]);
         }
-
-        var workday = isWorkDay(T.currentHabit, date);
-        if (workday) {
-            $td.removeClass('rest-day');
-        } else {
-            $td.addClass('rest-day');
-        }
-
-        var waiting = waitingServerCheckin(T.currentHabit, date);
-        if (waiting) {
-            $td.addClass('wait-server-response');
-        } else {
-            $td.removeClass('wait-server-response');
-        }
+        return result.join('，');
     }
 
-    // update checkins in table
-    function updateCheckins() {
-        var i,j,k;
-        var date = currentDate();
-        date.setMonth(date.getMonth()-1);
-        var dates = [];
 
-        for (i=0; i<3; i++) {
-            dates.push(firstDayOfTable(date));
-            date.setMonth(date.getMonth()+1);
-        }
-
-        var $trs = $('.checkin-table tr');
-        for (i=0; i<6; i++) {
-            var $tr = $trs.eq(i+1);
-            var $tds = $('td', $tr);
-            for (j=0; j<3; j++) {
-                for (k=0; k<7; k++) {
-                    var $td = $tds.eq(j*7+k);
-
-                    updateCheckin($td, dates[j]);
-
-                    dates[j].setDate(dates[j].getDate()+1);
-                }
-            }
-        }
-    }
-
-    // update habit at checkin-body
-    function updateHabit(habit) {
-        var $habit = $(habit.dom);
-        $('.checkin-count', habit.dom).text(checkinCount(habit));
-        if (habit == T.currentHabit) {
-            $habit.addClass('active');
-        } else {
-            $habit.removeClass('active');
-        }
-
-        $habit.removeClass('list-group-item-success');
-        $habit.removeClass('list-group-item-info');
-        $habit.removeClass('list-group-item-warning');
-        $habit.removeClass('list-group-item-danger');
-
-        if (!habit.enable) return;
-
-        var date = new Date();
-        var i = 0;
-        var INFO = 2;
-        var WARNING = 5;
-        var ERROR = 8;
-        var cdate = new Date(habit.create_time);
-        while (!sameDay(date, cdate) && i < ERROR) {
-            if (isWorkDay(habit, date) && !checkin(habit, date))
-                i++;
-            date.setDate(date.getDate()-1);
-        }
-
-        var state = 'list-group-item-success';
-        if (i >= ERROR)
-            state = 'list-group-item-error';
-        else if (i >= WARNING)
-            state = 'list-group-item-warning';
-        else if (i >= INFO)
-            state = 'list-group-item-info';
-
-        $habit.addClass(state);
-    }
-
-    // update habits in habit list
-    // @param refresh: true: the model is changed, recreate related dom object
-    //                 false: the model is not changed, reuse the dom object
-    function updateHabits(refresh) {
-        var hid, habit, $habit;
-        var $list = $('#active-habit-list');
-
-        if (refresh) $list.empty();
-
-        for (hid in M.activeHabits) {
-            habit = M.activeHabits[hid];
-            if (!habit) continue;
-
-            if (refresh) {
-                $habit = $('<li></li>');
-                $habit.data('model', habit);
-                habit.dom = $habit[0];
-                $habit.addClass('habit list-group-item');
-                $habit.text(habit.name);
-                $habit.append('<span class="badge checkin-count"></span>');
-                $habit.appendTo($list);
-                new Hammer($habit[0]).on('tap', function(e) {
-                    var $target = $(e.target);
-                    T.currentHabit = $target.data('model') || $target.parent().data('model');
-                    updateHabits();
-                });
-            }
-            updateHabit(habit);
-        }
-
-        updateCheckins();
-    }
 
     // Get or set current date
     function currentDate(date) {
@@ -247,10 +133,12 @@ $(document).ready(function() {
     // Get or set current habit
     function currentHabit(habit) {
         if (typeof habit == 'undefined') {
-            return T.currentHibit;
+            return T.currentHabit;
         } else {
-            T.currentHibit = habit;
-            updateHabits();
+            var last = T.currentHabit;
+            T.currentHabit = habit;
+            if (last != habit)
+                refreshCheckinBody();
         }
     }
 
@@ -577,8 +465,13 @@ $(document).ready(function() {
         });
 
         function toggleCheckin(e) {
-            if (M.activeHabitCount == 0) {
+            if (M.habits.length == 0) {
                 infoDialog('提醒', '请先创建一个习惯');
+                return;
+            }
+
+            if (M.activeHabits.length == 0) {
+                infoDialog('提醒', '请创建或启用一个习惯');
                 return;
             }
 
@@ -653,6 +546,15 @@ $(document).ready(function() {
                 hc.on('tap', toggleCheckin);
             }
         }
+
+    });
+
+
+    $('#active-habit-list').on('click', 'li', function(e) {
+        var $target = $(e.currentTarget);
+        var hid = $target.data('hid');
+
+        currentHabit(M.habitMap[hid]);
 
     });
 
@@ -924,8 +826,6 @@ $(document).ready(function() {
                 M.username = data.username;
                 M.phone = data.phone;
                 M.email = data.email;
-                M.activeHabitCount = data.activeHavitCount;
-                M.inactiveHabitCount = data.inactiveHabitCount;
                 M.version = -1;
 
                 $errmsg.css('display', 'none');
@@ -984,11 +884,12 @@ $(document).ready(function() {
 
             if (data.version == M.version+1) {
                 M.version += 1;
+                M.habits.unshift(data.habit);
+                M.habitMap[data.habit.id] = data.habit;
                 if (data.habit.enable) {
-                    M.activeHabits[data.habit.id] = data.habit;
-                    M.activeHabitCount ++;
+                    M.activeHabits.unshift(data.habit);
                     T.currentHabit = data.habit;
-                    updateHabits(true);
+                    refreshBodyDOM();
                 }
             } else {
                 refresh();
@@ -1168,71 +1069,10 @@ $(document).ready(function() {
     });
 
     $('#button-manage-habits').click(function() {
-        function workdayDesc(workday) {
-            var desc = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-            var result = [];
-            var i;
-            for (i=0; i<7; i++) {
-                if (workday & (1<<(i+1)))
-                    result.push(desc[i]);
-            }
-            return result.join('，');
-        }
-
-        ajax.get('/api/v1/habits', {},
-            function(data) {
-                if (data.error) {
-                    infoDialog('错误', '获取所有习惯出错');
-                    return;
-                }
-
-                var habits = data.habits;
-                var $habits = $('#all-habit-list');
-                $habits.empty();
-                var activeCount = 0, inactiveCount = 0;
-                for (var i=0; i<habits.length; i++) {
-                    var h = habits[i];
-                    var $h = $('<li></li>');
-                    $h.data('model', h);
-                    h.dom = $h[0];
-                    $h.addClass('habit list-group-item');
-
-                    if (h.enable) activeCount++;
-                    else inactiveCount++;
-
-                    var $count = $('<span class="badge checkin-count"></span>');
-                    $h.append($count);
-                    var $activator = $('<input type="checkbox" class="activator" '+(h.enable ? "checked" : "")+'>');
-                    $h.append($activator);
-                    var $hinfo = $('<div class="habit-info"></div>');
-                    var $hname = $('<h5 class="habit-name"></h5>');
-                    $hname.text(h.name);
-                    $hinfo.append($hname);
-                    var cdate = new Date(h.create_time);
-                    var $hdesc1 = $('<p class="habit-desc">创建于' + cdate.getFullYear() +
-                                    '年' + (cdate.getMonth()+1) + '月' + cdate.getDate() + '日</p>');
-                    var $hdesc2 = $('<p class="habit-desc">签到时间为'+workdayDesc(h.workday)+'</p>');
-                    $hinfo.append($hdesc1);
-                    $hinfo.append($hdesc2);
-                    $h.append($hinfo);
-
-                    $habits.append($h);
-
-                }
-
-                M.activeHabitCount = activeCount;
-                M.inactiveHabitCount = inactiveCount;
-                M.habits = habits;
-
-                $('#button-manage-habits').css('display', 'none');
-                $('#checkin-body').css('display', 'none');
-                $('#button-checkin').css('display', 'block');
-                $('#manage-body').css('display', 'block');
-
-            }, function(xhr, err) {
-                infoDialog('获取所有习惯出错: ' + err);
-            });
-
+        $('#button-manage-habits').css('display', 'none');
+        $('#checkin-body').css('display', 'none');
+        $('#button-checkin').css('display', 'block');
+        $('#manage-body').css('display', 'block');
     });
 
     $('#button-checkin').click(function() {
@@ -1334,38 +1174,257 @@ $(document).ready(function() {
         }
 
     });
-
-
 // Register Listeners End ------------------------
 
+
+
+// Refresh DOM begin -----------------------------
+
+
+    // update one checkin in table according to the habit setting
+    function updateCheckin($td, date) {
+        var checkined = checkin(T.currentHabit, date);
+
+        if (checkined) {
+            $td.addClass('checkined');
+        } else {
+            $td.removeClass('checkined');
+        }
+
+        var workday = isWorkDay(T.currentHabit, date);
+        if (workday) {
+            $td.removeClass('rest-day');
+        } else {
+            $td.addClass('rest-day');
+        }
+
+        var waiting = waitingServerCheckin(T.currentHabit, date);
+        if (waiting) {
+            $td.addClass('wait-server-response');
+        } else {
+            $td.removeClass('wait-server-response');
+        }
+    }
+
+    // update checkins in table
+    function updateCheckins() {
+        var i,j,k;
+        var date = currentDate();
+        date.setMonth(date.getMonth()-1);
+        var dates = [];
+
+        for (i=0; i<3; i++) {
+            dates.push(firstDayOfTable(date));
+            date.setMonth(date.getMonth()+1);
+        }
+
+        var $trs = $('.checkin-table tr');
+        for (i=0; i<6; i++) {
+            var $tr = $trs.eq(i+1);
+            var $tds = $('td', $tr);
+            for (j=0; j<3; j++) {
+                for (k=0; k<7; k++) {
+                    var $td = $tds.eq(j*7+k);
+
+                    updateCheckin($td, dates[j]);
+
+                    dates[j].setDate(dates[j].getDate()+1);
+                }
+            }
+        }
+    }
+
+
+    // update habit at checkin-body and management-body
+    function updateHabit($habit, habit) {
+        if (typeof habit == 'undefined') {
+            habit = $habit;
+            $habit = $('#active-habit-list li').filter(function(){$(this).data('hid') == habit.id;});
+        }
+        $('.checkin-count', $habit).text(checkinCount(habit));
+        $habit.removeClass('list-group-item-success');
+        $habit.removeClass('list-group-item-info');
+        $habit.removeClass('list-group-item-warning');
+        $habit.removeClass('list-group-item-danger');
+
+        if (!habit.enable) return;
+
+        var date = new Date();
+        var i = 0;
+        var INFO = 2;
+        var WARNING = 5;
+        var ERROR = 8;
+        var cdate = new Date(habit.create_time);
+        while (!sameDay(date, cdate) && i < ERROR) {
+            if (isWorkDay(habit, date) && !checkin(habit, date))
+                i++;
+            date.setDate(date.getDate()-1);
+        }
+
+        var state = 'list-group-item-success';
+        if (i >= ERROR)
+            state = 'list-group-item-error';
+        else if (i >= WARNING)
+            state = 'list-group-item-warning';
+        else if (i >= INFO)
+            state = 'list-group-item-info';
+
+        $habit.addClass(state);
+    }
+
+
+    // update habits in habit list of checkin page
+    // @param refresh: true: the model is changed, recreate related dom object
+    //                 false: the model is not changed, reuse the dom object
+    function updateHabits(recreateDOM) {
+        var i, hid, habit, $habits, $habit;
+        var $list = $('#active-habit-list');
+
+        if (recreateDOM) $list.empty();
+        else $habits = $('li', $list);
+
+        for (i=0; i<M.activeHabits.length; i++) {
+            habit = M.activeHabits[i];
+
+            if (recreateDOM) {
+                $habit = $('<li></li>');
+                $habit.data('hid', habit.id);
+                $habit.addClass('habit list-group-item');
+                $habit.text(habit.name);
+                $habit.append('<span class="badge checkin-count"></span>');
+                $habit.appendTo($list);
+            } else {
+                $habit = $habits.filter(function() {
+                    $(this).data('hid')==habit.id;
+                    });
+            }
+
+            updateHabit($habit, habit);
+
+            if (habit == T.currentHabit) {
+                $habit.addClass('active');
+            } else {
+                $habit.removeClass('active');
+            }
+        }
+
+    }
+
+
     // refresh management body
-    function refreshManageBody() {
-        $('#active-habit-count').text(M.activeHabitCount);
-        $('#inactive-habit-count').text(M.inactiveHabitCount);
-        for (var i=0; i<M.habits.length; i++) {
-            updateHabit(M.habits[i]);
+    function refreshManageBody(recreateDOM) {
+        // refresh Management Header
+        var activeCount = M.activeHabits.length;
+        var inactiveCount = M.habits.length - activeCount;
+        $('#active-habit-count').text(activeCount);
+        $('#inactive-habit-count').text(inactiveCount);
+
+        var i, habit, $habit, $habits, $list = $('#all-habit-list');
+        if (recreateDOM) $list.empty();
+        else $habits = $('li', $list);
+
+        // refresh Management Habits
+        for (i=0; i<M.habits.length; i++) {
+            habit = M.habits[i];
+            if (recreateDOM) {
+                $habit = $('<li></li>');
+                $habit.data('hid', habit.id);
+                $habit.addClass('habit list-group-item');
+                $habit.append('<span class="badge checkin-count"></span>');
+                $habit.append('<input type="checkbox" class="activator" '+(habit.enable ? "checked" : "")+'>');
+                var $hinfo = $('<div class="habit-info"></div>');
+                var $hname = $('<h5 class="habit-name"></h5>');
+                $hname.text(habit.name);
+                $hinfo.append($hname);
+                var cdate = new Date(habit.create_time);
+                var $hdesc1 = $('<p class="habit-desc">创建于' + cdate.getFullYear() +
+                                '年' + (cdate.getMonth()+1) + '月' + cdate.getDate() + '日</p>');
+                var $hdesc2 = $('<p class="habit-desc">签到时间为'+workdayDesc(habit.workday)+'</p>');
+                $hinfo.append($hdesc1);
+                $hinfo.append($hdesc2);
+                $habit.append($hinfo);
+
+                $habits.append($habit);
+
+            } else {
+                $habit = $habits.filter(function() {
+                    $(this).data('hid') == habit.id;
+                });
+            }
+            updateHabit($habit, habit);
         }
     }
 
     // refresh view after big model changed (from MVC perspective)
-    function refreshCheckinBody() {
+    function refreshCheckinBody(recreateDOM) {
         var i;
-        if (M.activeHabitCount > 0) {
-            var keys = Object.keys(M.activeHabits);
-            if (!T.currentHabit) {
-                T.currentHabit = M.activeHabits[keys[0]];
-            } else {
-                T.currentHabit = M.activeHabits[T.currentHabit.id];
+        updateHabits(recreateDOM);
+        updateCheckins();
+    }
+
+    function refreshBodyDOM() {
+        refreshCheckinBody(true);
+        refreshManageBody(true);
+    }
+
+    function refreshBody() {
+        ajax.get('/api/v1/habits', {}, function(data) {
+            var i, h;
+            if (data.error) {
+                log('get checkins error: ' + data.msg);
+                infoDialog('提示', '从服务器获取信息失败，请重新刷新');
+                return;
+            }
+            if (M.userid != data.uid) {
+                infoDialog('错误', '会话超时，请重新打开页面登录');
+                return;
+            }
+            if (M.userid == data.uid && M.version == data.version) {
+                log('no data changed on server, every thing is ok');
+                return;
+            }
+            M.version = data.version;
+            M.habits = data.habits;
+
+            M.activeHabits = [];
+            M.habitMap = {},
+            for (i=0; i<M.habits.length; i++) {
+                h = M.habits[i];
+                M.habitMap[h.id] = h;
+                if (h.enable) {
+                    M.activeHabits.push(h);
+                }
             }
 
-            if (!T.currentHabit) {
-                T.currentHabit = M.activeHabits[keys[0]];
+            if (M.activeHabits.length > 0) {
+                if (!T.currentHabit) {
+                    T.currentHabit = M.activeHabits[0];
+                } else {
+                    T.currentHabit = M.habitMap[T.currentHabit.id];
+                    if (!T.currentHabit || !T.currentHabit.enable)
+                        T.currentHabit = M.activeHabits[0];
+                }
+            } else {
+                T.currentHabit = null;
             }
-        } else {
-            T.currentHabit = null;
-        }
-        updateHabits(true);
+
+            refreshBodyDOM();
+        },
+        function(xhr, err) {
+            log('get checkin data failed');
+            infoDialog('错误', '连接服务器出错');
+        }); 
     }
+
+    function refreshNavDOM() {
+        if (M.userid < 0) {
+            $('nav').addClass('no-user');
+        } else {
+            $('nav').removeClass('no-user');
+        }
+        $('.user').text(M.username);
+    }
+
 
     function refreshNav() {
         ajax.get('/api/v1/whoami', {},
@@ -1380,49 +1439,24 @@ $(document).ready(function() {
                 M.username = data.name;
                 M.phone = data.phone;
                 M.email = data.email;
-                M.activeHabitCount = data.activeHabitCount;
-                M.inactiveHabitCount = data.inactiveHabitCount;
 
-                if (M.userid < 0) {
-                    $('nav').addClass('no-user');
-                } else {
-                    $('nav').removeClass('no-user');
-                }
-                $('.user').text(M.username);
+                refreshNavDOM();
             },
             function(xhr, err) {
                 log('get whoami failed');
             });
     }
 
+
+
     // refresh after having gotten the userid and username
     function refresh() {
         refreshNav();
-        ajax.get('/api/v1/checkins', {version: M.version},
-                 function(data) {
-                    var i;
-                    if (data.error) {
-                        log('get checkins error: ' + data.msg);
-                        infoDialog('提示', '从服务器获取信息失败，请重新刷新');
-                        return;
-                    }
-                    if (M.userid != data.uid) {
-                        infoDialog('错误', '登录超时，请重新打开页面登录');
-                        return;
-                    }
-                    if (M.userid == data.uid && M.version == data.version) {
-                        log('no data changed on server, every thing is ok');
-                        return;
-                    }
-                    M.version = data.version;
-                    M.activeHabits = data.activeHabits;
-                    M.activeHabitCount = Object.keys(data.activeHabits).length;
-                    refreshCheckinBody();
-                 },
-                 function(xhr, err) {
-                    log('get checkin data failed');
-                 }); 
+        refreshBody();
     }
+
+// Refresh DOM end -------------------------------
+
 
     refresh();
 
