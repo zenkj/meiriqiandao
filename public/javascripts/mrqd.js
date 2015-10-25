@@ -1235,12 +1235,8 @@ $(document).ready(function() {
     }
 
 
-    // update habit at checkin-body and management-body
-    function updateHabit($habit, habit) {
-        if (typeof habit == 'undefined') {
-            habit = $habit;
-            $habit = $('#active-habit-list li').filter(function(){$(this).data('hid') == habit.id;});
-        }
+    // update habit at management-body
+    function baseUpdateHabit($habit, habit) {
         $('.checkin-count', $habit).text(checkinCount(habit));
         $habit.removeClass('list-group-item-success');
         $habit.removeClass('list-group-item-info');
@@ -1272,11 +1268,27 @@ $(document).ready(function() {
         $habit.addClass(state);
     }
 
+    // update habit at checkin-body
+    function updateHabit($habit, habit) {
+        if (typeof habit == 'undefined') {
+            habit = $habit;
+            $habit = $('#active-habit-list li').filter(function(){return $(this).data('hid') == habit.id;});
+        }
+
+        baseUpdateHabit($habit, habit);
+
+        if (habit == T.currentHabit) {
+            $habit.addClass('active');
+        } else {
+            $habit.removeClass('active');
+        }
+    }
+
 
     // update habits in habit list of checkin page
-    // @param refresh: true: the model is changed, recreate related dom object
+    // @param recreateDOM: true: the model is changed, recreate related dom object
     //                 false: the model is not changed, reuse the dom object
-    function updateHabits(recreateDOM) {
+    function updateCheckinHabits(recreateDOM) {
         var i, hid, habit, $habits, $habit;
         var $list = $('#active-habit-list');
 
@@ -1295,30 +1307,18 @@ $(document).ready(function() {
                 $habit.appendTo($list);
             } else {
                 $habit = $habits.filter(function() {
-                    $(this).data('hid')==habit.id;
+                    return $(this).data('hid') == habit.id;
                     });
             }
 
             updateHabit($habit, habit);
-
-            if (habit == T.currentHabit) {
-                $habit.addClass('active');
-            } else {
-                $habit.removeClass('active');
-            }
         }
-
     }
 
-
-    // refresh management body
-    function refreshManageBody(recreateDOM) {
-        // refresh Management Header
-        var activeCount = M.activeHabits.length;
-        var inactiveCount = M.habits.length - activeCount;
-        $('#active-habit-count').text(activeCount);
-        $('#inactive-habit-count').text(inactiveCount);
-
+    // update habits in habit list of management page
+    // @param recreateDOM: true: the model is changed, recreate related dom object
+    //                 false: the model is not changed, reuse the dom object
+    function updateManageHabits(recreateDOM) {
         var i, habit, $habit, $habits, $list = $('#all-habit-list');
         if (recreateDOM) $list.empty();
         else $habits = $('li', $list);
@@ -1344,21 +1344,32 @@ $(document).ready(function() {
                 $hinfo.append($hdesc2);
                 $habit.append($hinfo);
 
-                $habits.append($habit);
+                $list.append($habit);
 
             } else {
                 $habit = $habits.filter(function() {
-                    $(this).data('hid') == habit.id;
+                    return $(this).data('hid') == habit.id;
                 });
             }
-            updateHabit($habit, habit);
+            baseUpdateHabit($habit, habit);
         }
+    }
+
+    // refresh management body
+    function refreshManageBody(recreateDOM) {
+        // refresh Management Header
+        var activeCount = M.activeHabits.length;
+        var inactiveCount = M.habits.length - activeCount;
+        $('#active-habit-count').text(activeCount);
+        $('#inactive-habit-count').text(inactiveCount);
+
+        updateManageHabits(recreateDOM);
+
     }
 
     // refresh view after big model changed (from MVC perspective)
     function refreshCheckinBody(recreateDOM) {
-        var i;
-        updateHabits(recreateDOM);
+        updateCheckinHabits(recreateDOM);
         updateCheckins();
     }
 
@@ -1387,7 +1398,7 @@ $(document).ready(function() {
             M.habits = data.habits;
 
             M.activeHabits = [];
-            M.habitMap = {},
+            M.habitMap = {};
             for (i=0; i<M.habits.length; i++) {
                 h = M.habits[i];
                 M.habitMap[h.id] = h;
