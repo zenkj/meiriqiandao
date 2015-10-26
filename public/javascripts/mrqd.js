@@ -1556,10 +1556,11 @@ $(document).ready(function() {
                 infoDialog('提示', '从服务器获取信息失败，请重新刷新');
                 return;
             }
-            if (M.userid != data.uid) {
-                infoDialog('错误', '会话超时，请重新打开页面登录(' + M.userid + ':' + data.uid + ')');
-                return;
-            }
+            // refreshBody is accompanied with refreshNav(whoami), so no need to check this
+            //if (M.userid != data.uid) {
+            //    infoDialog('错误', '会话超时，请重新打开页面登录(' + M.userid + ':' + data.uid + ')');
+            //    return;
+            //}
             if (M.userid == data.uid && M.version == data.version) {
                 log('no data changed on server, every thing is ok');
                 return;
