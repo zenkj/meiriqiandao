@@ -1557,7 +1557,7 @@ $(document).ready(function() {
                 return;
             }
             if (M.userid != data.uid) {
-                infoDialog('错误', '会话超时，请重新打开页面登录');
+                infoDialog('错误', '会话超时，请重新打开页面登录(' + M.userid + ':' + data.uid + ')');
                 return;
             }
             if (M.userid == data.uid && M.version == data.version) {
