@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "supervisor ./bin/www"
+    "start": "pm2 start -n mrqd ./bin/www",
+    "test": "supervisor ./bin/www"
   },
   "dependencies": {
     "async": "^1.4.2",

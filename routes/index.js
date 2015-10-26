@@ -27,7 +27,7 @@ function isValidPhone(phone) {
 }
 
 function isValidEmail(email) {
-    if (typeof phone != 'string') return false;
+    if (typeof email != 'string') return false;
     var email = email.match(/^([\w.-]+)@(.*)(\.\w+)$/);
     if (email) return true;
     return false;
@@ -116,7 +116,7 @@ router.post('/login', function(req, res) {
                 if (rows[0].password == hash.hash(password)) {
                     log.log('user ' + rows[0].name + '('+ rows[0].id + ') logined');
                     req.session.regenerate(function(err) {
-                        cb(null, {userid: rows[0].id, username: rows[0].name, phone: rows[0].phone||'', email: rows[0].email||'', version: version});
+                        cb(null, {userid: rows[0].id, username: rows[0].name, phone: rows[0].phone||'', email: rows[0].email||'', version: rows[0].version});
                     });
                 } else {
                     cb('err');
@@ -552,6 +552,8 @@ router.post('/api/v1/habits', function(req, res) {
                             name: name,
                             workday: workday,
                             enable: enable,
+                            create_time: new Date(),
+                            checkins: {},
                         }});
                 cb();
             });
