@@ -1,16 +1,4 @@
-<%
-    function sameYear(d1, d2) {
-        return d1.getFullYear() == d2.getFullYear();
-    }
-
-    function sameMonth(d1, d2) {
-        return sameYear(d1, d2) && d1.getMonth() == d2.getMonth();
-    }
-
-    function sameDay(d1, d2) {
-        return sameMonth(d1, d2) && d1.getDate() == d2.getDate();
-    }
-%><!DOCTYPE html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8">
@@ -26,6 +14,19 @@
     <script src="/javascripts/mrqd.js"></script>
   </head>
 
+<%
+    function sameYear(d1, d2) {
+        return d1.getFullYear() == d2.getFullYear();
+    }
+
+    function sameMonth(d1, d2) {
+        return sameYear(d1, d2) && d1.getMonth() == d2.getMonth();
+    }
+
+    function sameDay(d1, d2) {
+        return sameMonth(d1, d2) && d1.getDate() == d2.getDate();
+    }
+%>
 
   <body>
     <% if (user.id < 0) { %>
@@ -101,8 +102,16 @@
     <div id="manage-body">
       <div class="container manage-header">
         <div class="row">
-          <div class="col-xs-offset-3 col-xs-6 col-md-offset-4 col-md-4"> 
-            <h3>我的习惯</h3>
+          <div class="col-xs-9 col-md-8"> 
+            <div class="form-group search-habit">
+              <label class="sr-only" for="search-habit-text">搜索习惯</label>
+              <div class="input-group">
+                <div class="input-group-addon" aria-hidden="true">
+                  <span class="glyphicon glyphicon-search" aria-hidden="true"></span>
+                </div>
+                <input type="text" class="form-control" id="search-habit-text" placeholder="搜索习惯">
+              </div>
+            </div>
           </div>
           <div class="col-xs-3 col-md-4">
             <p id="habit-summary"><span id="active-habit-count"></span>个启用<br/><span id="inactive-habit-count"></span>个未启用</p>

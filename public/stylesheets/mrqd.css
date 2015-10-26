@@ -218,6 +218,11 @@ nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
     text-align: center;
 }
 
+.search-habit {
+    position: relative;
+    top: 10px;
+}
+
 #habit-summary {
     position: relative;
     top: 10px;
