@@ -179,7 +179,7 @@ nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
     background-color: #dff0d8;
 }
 
-#habit-container {
+.active-habit-container {
     position: absolute;
     top: 300px;
     bottom: 0;
@@ -223,6 +223,10 @@ nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
     top: 10px;
 }
 
+.matched {
+    color: red;
+}
+
 #habit-summary {
     position: relative;
     top: 10px;
@@ -235,6 +239,21 @@ nav .login, nav .signup, nav.no-user .user-config, nav.no-user .logout {
 
 #inactive-habit-count {
     color: green;
+}
+
+.manage-header {
+    position: absolute;
+    top: 0;
+    height: 50px;
+}
+
+.habit-container {
+    position: absolute;
+    top: 50px;
+    bottom: 0;
+    width: 100%;
+    height: auto;
+    overflow-y: auto;
 }
 
 /*

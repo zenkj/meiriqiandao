@@ -24,6 +24,14 @@ $(document).ready(function() {
         autoMoving: false,  // table is auto moving
         waitingCheckins: {},
     };
+
+    // search data
+    var S = {
+        habits: [],
+        habitMap: {},
+        $nampMap: {},
+    };
+
 // Global Data End---------------------------------
 
 
@@ -153,7 +161,7 @@ $(document).ready(function() {
         var r = chid.replace('-', ' ').match(/\S+/g);
         if (r && r.length == 2) {
             var hid = +r[0];
-            return M.activeHabits[hid];
+            return M.habitMap[hid];
         }
         return null;
     }
@@ -889,7 +897,8 @@ $(document).ready(function() {
                 if (data.habit.enable) {
                     M.activeHabits.unshift(data.habit);
                     T.currentHabit = data.habit;
-                    refreshBodyDOM(true);
+                    newHabitDOM(data.habit);
+                    refreshBodyDOM();
                 }
             } else {
                 refresh();
@@ -1086,6 +1095,80 @@ $(document).ready(function() {
         $('#checkin-body').css('display', 'block');
     });
 
+    function refreshSearch() {
+        S.habits = [];
+        S.habitMap = {};
+        S.$nameMap = {};
+    }
+
+    $('#search-habit-text').each(function() {
+        var $container = $('#all-habit-list');
+        var $this = $(this);
+
+        function escapeRegexChars(s) {
+            return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        }
+
+        $this.on('focus', function() {
+            var $newHabits = $('#all-habit-list > li');
+            var i;
+            for (i=$newHabits.length-1; i>=0; i--) {
+                var h = $newHabits[i];
+                var hid = $(h).data('hid');
+                if (!S.habitMap[hid]) {
+                    S.habits.unshift(h);
+                    S.habitMap[hid] = h;
+                    S.$nameMap[hid] = $('.habit-name', h);
+                }
+            }
+        });
+
+        $this.on('blur', function() {
+            // seems nothing to do
+        });
+
+        $this.on('input', function() {
+            var i, h, $name, value = $.trim($this.val()||'');
+            $(S.habits).detach();
+            if (value.length == 0) {
+                for (i=0; i<M.habits.length; i++) {
+                    h = M.habits[i];
+                    $name = S.$nameMap[h.id];
+                    if (!$name) continue;
+                    $name.text(h.name);
+                }
+                $container.append(S.habits);
+            } else {
+                var keys = value.match(/\S+/g).map(function(s) {return escapeRegexChars(s);});
+                var regexp = new RegExp(keys.join('|'), 'g');
+                var matchedHabits = [];
+                for (i=0; i<M.habits.length; i++) {
+                    h = M.habits[i];
+                    var dom = S.habitMap[h.id];
+                    $name = S.$nameMap[h.id];
+                    if (!dom) continue;
+                    var count = 0;
+                    var newname = h.name.replace(regexp,
+                                     function(old) {
+                                         count++;
+                                         return '<span class="matched">'+old+'</span>';
+                                     });
+
+
+                    if (count > 0 && $name) {
+                        $name.html(newname);
+                        matchedHabits.push([count, dom]);
+                    }
+                }
+
+                matchedHabits = matchedHabits.sort(function(x,y) {return y[0]-x[0];}).map(function(x) {return x[1];});
+
+                $container.append(matchedHabits);
+            }
+        });
+    });
+
+
     $('#all-habit-list').on('click', 'li', function(e) {
         var $target = $(e.target);
         var $ctarget = $(e.currentTarget);
@@ -1153,17 +1236,35 @@ $(document).ready(function() {
 // Refresh DOM begin -----------------------------
 
     function activeHabit(h, active) {
+        var i;
         h.enable = +active;
         if (active) {
-            M.activeHabits.unshift(h);
+            for (i=0; i<M.activeHabits.length; i++) {
+                if (M.activeHabits[i].id < h.id) {
+                    break;
+                }
+            }
+            if (i < M.activeHabits.length) {
+                M.activeHabits.splice(i, 0, h);
+            } else {
+                M.activeHabits.push(h);
+            }
+
+            newCheckinHabitDOM(h);
         } else {
             var activeHabits = [];
-            M.activeHabits.forEach(function(habit) {
-                if (habit.id != h.id) activeHabits.push(habit);
-            });
-            M.activeHabits = activeHabits;
+            for (i=0; i<M.activeHabits.length; i++) {
+                if (M.activeHabits[i].id == h.id)
+                    break;
+            }
+
+            if (i<M.activeHabits.length) {
+                M.activeHabits.splice(i,1);
+            }
+
+            removeCheckinHabitDOM(h);
         }
-        refreshBodyDOM(true);
+        refreshBodyDOM();
     }
 
     // update one checkin in table according to the habit setting
@@ -1296,6 +1397,43 @@ $(document).ready(function() {
     }
 
 
+    function firstHabitLessThan($habits, habit) {
+        for (var i=0; i<$habits.length; i++) {
+            var $habit = $habits.eq(i);
+            if ($habit.data('hid') < habit.id)
+                return $habit;
+        }
+        return null;
+    }
+
+    function newCheckinHabitDOM(habit) {
+        var $habits = $('#active-habit-list > li');
+        var $habit = $('<li></li>');
+        $habit.data('hid', habit.id);
+        $habit.addClass('habit list-group-item');
+        $habit.append('<span class="habit-name"></span>');
+        $habit.append('<span class="badge checkin-count"></span>');
+
+        var $below = firstHabitLessThan($habits, habit);
+        if ($below) {
+            $habit.insertBefore($below);
+        } else {
+            $('#active-habit-list').append($habit);
+        }
+        return $habit;
+    }
+
+    function removeCheckinHabitDOM(habit) {
+        var $habits = $('#active-habit-list > li');
+        for (var i=0; i<$habits.length; i++) {
+            var $habit = $habits.eq(i);
+            if ($habit.data('hid') == habit.id) {
+                $habit.remove();
+                break;
+            }
+        }
+    }
+
     // update habits in habit list of checkin page
     // @param recreateDOM: true: the model is changed, recreate related dom object
     //                 false: the model is not changed, reuse the dom object
@@ -1322,12 +1460,7 @@ $(document).ready(function() {
             habit = M.activeHabits[i];
 
             if (recreateDOM) {
-                $habit = $('<li></li>');
-                $habit.data('hid', habit.id);
-                $habit.addClass('habit list-group-item');
-                $habit.append('<span class="habit-name"></span>');
-                $habit.append('<span class="badge checkin-count"></span>');
-                $habit.appendTo($list);
+                $habit = newCheckinHabitDOM(habit);
             } else {
                 $habit = $habits.filter(function() {
                     return $(this).data('hid') == habit.id;
@@ -1336,6 +1469,34 @@ $(document).ready(function() {
 
             updateCheckinHabit($habit, habit);
         }
+    }
+
+    function newManageHabitDOM(habit) {
+        var $habits = $('#all-habit-list > li');
+        var $habit = $('<li></li>');
+        $habit.data('hid', habit.id);
+        $habit.addClass('habit list-group-item');
+        $habit.append('<span class="badge checkin-count"></span>');
+        $habit.append('<input type="checkbox" class="activator" '+(habit.enable ? "checked" : "")+'>');
+        var $hinfo = $('<div class="habit-info"></div>');
+        $hinfo.append('<h5 class="habit-name"></h5>');
+        $hinfo.append('<p class="habit-desc">创建于<span class="habit-desc1"></span></p>');
+        $hinfo.append('<p class="habit-desc">签到时间为<span class="habit-desc2"></span></p>');
+        $habit.append($hinfo);
+
+        var $below = firstHabitLessThan($habits, habit);
+        if ($below) {
+            $habit.insertBefore($below);
+        } else {
+            $('#all-habit-list').append($habit);
+        }
+        return $habit;
+    }
+
+
+    function newHabitDOM(habit) {
+        newCheckinHabitDOM(habit);
+        newManageHabitDOM(habit);
     }
 
     // update habits in habit list of management page
@@ -1350,19 +1511,7 @@ $(document).ready(function() {
         for (i=0; i<M.habits.length; i++) {
             habit = M.habits[i];
             if (recreateDOM) {
-                $habit = $('<li></li>');
-                $habit.data('hid', habit.id);
-                $habit.addClass('habit list-group-item');
-                $habit.append('<span class="badge checkin-count"></span>');
-                $habit.append('<input type="checkbox" class="activator" '+(habit.enable ? "checked" : "")+'>');
-                var $hinfo = $('<div class="habit-info"></div>');
-                $hinfo.append('<h5 class="habit-name"></h5>');
-                $hinfo.append('<p class="habit-desc">创建于<span class="habit-desc1"></span></p>');
-                $hinfo.append('<p class="habit-desc">签到时间为<span class="habit-desc2"></span></p>');
-                $habit.append($hinfo);
-
-                $list.append($habit);
-
+                $habit = newManageHabitDOM(habit);
             } else {
                 $habit = $habits.filter(function() {
                     return $(this).data('hid') == habit.id;
@@ -1380,8 +1529,12 @@ $(document).ready(function() {
         $('#active-habit-count').text(activeCount);
         $('#inactive-habit-count').text(inactiveCount);
 
-        updateManageHabits(recreateDOM);
+        if (recreateDOM) {
+            refreshSearch();
+            $('#search-habit-text').val('');
+        }
 
+        updateManageHabits(recreateDOM);
     }
 
     // refresh view after big model changed (from MVC perspective)
