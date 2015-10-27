@@ -862,6 +862,15 @@ $(document).ready(function() {
         }
         init();
 
+        if (M.userid < 0) {
+            $dialog.modal('hide');
+            $dialog.one('hidden.bs.modal', function() {
+                infoDialog('提醒', '登录后才能创建新习惯');
+            });
+            return;
+        }
+
+
         if (name.length == 0) {
             setError($name, '习惯名字不能为空！');
             return;
@@ -900,6 +909,8 @@ $(document).ready(function() {
                     newHabitDOM(data.habit);
                     refreshBodyDOM();
                 }
+
+                generatePinyin(data.habit);
             } else {
                 refresh();
             }
@@ -947,7 +958,10 @@ $(document).ready(function() {
 
         if (M.userid < 0) {
             // dummy user
-            habit.name = name;
+            if (habit.name != name) {
+                habit.name = name;
+                generatePinyin(habit);
+            }
             habit.workday = workdays;
             refreshBodyDOM();
             init();
@@ -1127,6 +1141,98 @@ $(document).ready(function() {
             // seems nothing to do
         });
 
+        function decorate(name, matches) {
+            var i, j, p1, p2;
+            var result = [];
+            for (i=0,j=0; i<name.length;) {
+                if (j >= matches.length)
+                    break;
+                p1 = matches[j][0];
+                p2 = matches[j][1];
+                if (i < p1) {
+                    result.push(name.substring(i, p1));
+                }
+                result.push('<span class="matched">' + name.substring(p1, p2) + '</span>');
+                j++;
+                i = p2;
+            }
+
+            if (i<name.length)
+                result.push(name.substring(i, name.length));
+
+            return result.join('');
+        }
+
+        function matchHabit(habit, regexp) {
+            var dom = S.habitMap[habit.id];
+            var $name = S.$nameMap[habit.id];
+            if (!dom || !$name) return null;
+            var count = 0,
+                count1 = 0,
+                count2 = 0;
+            var newname = habit.name.replace(regexp,
+                             function(old) {
+                                 count += old.length;
+                                 return '<span class="matched">'+old+'</span>';
+                             });
+
+            if (habit.pinyinName) {
+                var matches1 = [];
+                var matches2 = [];
+                habit.pinyinName.replace(regexp, function(old, offset) {
+                    var p1 = offset;
+                    var p2 = offset + old.length-1;
+                    var i, i1=-1, i2=-1;
+                    for(i=0; i<habit.pinyinPos.length; i++) {
+                        if (p1 == habit.pinyinPos[i]) {
+                            i1 = i;
+                            break;
+                        } else if (p1 < habit.pinyinPos[i]) {
+                            i1 = i-1;
+                            break;
+                        }
+                    }
+                    if (i1 < 0) i1 = habit.pinyinPos.length-1;
+
+                    for (i=0; i<habit.pinyinPos.length; i++) {
+                        if (p2 == habit.pinyinPos[i]) {
+                            i2 = i+1;
+                            break;
+                        } else if (p2 < habit.pinyinPos[i]) {
+                            i2 = i;
+                            break;
+                        }
+                    }
+                    if (i2 < 0) i2 = habit.pinyinPos.length;
+
+                    count1 += i2-i1;
+
+                    matches1.push([i1,i2]);
+                });
+
+                habit.pinyinAcronym.replace(regexp, function(old, offset) {
+                    count2 += old.length;
+                    matches2.push([offset, offset+old.length]);
+                });
+            }
+
+            if (count2 >= count1 && count2 > count) {
+                // 首字母缩写优先级更高
+                count = count2;
+                newname = decorate(habit.name, matches2);
+            } else if (count1 > count2 && count1 > count) {
+                count = count1;
+                newname = decorate(habit.name, matches1);
+            }
+
+            if (count > 0) {
+                $name.html(newname);
+                return [count, dom];
+            }
+
+            return null;
+        }
+
         $this.on('input', function() {
             var i, h, $name, value = $.trim($this.val()||'');
             $(S.habits).detach();
@@ -1144,20 +1250,9 @@ $(document).ready(function() {
                 var matchedHabits = [];
                 for (i=0; i<M.habits.length; i++) {
                     h = M.habits[i];
-                    var dom = S.habitMap[h.id];
-                    $name = S.$nameMap[h.id];
-                    if (!dom) continue;
-                    var count = 0;
-                    var newname = h.name.replace(regexp,
-                                     function(old) {
-                                         count++;
-                                         return '<span class="matched">'+old+'</span>';
-                                     });
-
-
-                    if (count > 0 && $name) {
-                        $name.html(newname);
-                        matchedHabits.push([count, dom]);
+                    var result = matchHabit(h, regexp);
+                    if (result) {
+                        matchedHabits.push(result);
                     }
                 }
 
@@ -1548,6 +1643,27 @@ $(document).ready(function() {
         refreshManageBody(recreateDOM);
     }
 
+    function generatePinyin(habits) {
+        if (!window['txpinyin']) return;
+
+        if (typeof habits == 'undefined')
+            habits = M.habits;
+        if (typeof habits.length == 'undefined' && 
+            typeof habits.name == 'string')
+            habits = [habits];
+
+        for (var i=0; i<habits.length; i++) {
+            var h = habits[i];
+            var py = txpinyin(h.name);
+            if (py.hasHanzi) {
+                h.pinyinName = py.pinyin;
+                h.pinyinAcronym = py.acronym;
+                h.pinyinPos = py.pos;
+            }
+        }
+    }
+
+
     function refreshBody() {
         ajax.get('/api/v1/habits', {}, function(data) {
             var i, h;
@@ -1577,6 +1693,8 @@ $(document).ready(function() {
                     M.activeHabits.push(h);
                 }
             }
+
+            generatePinyin();
 
             refreshBodyDOM(true);
         },
